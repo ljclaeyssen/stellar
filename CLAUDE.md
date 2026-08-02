@@ -4,7 +4,7 @@ Domotique homemade pilotée par agent. **Lis `docs/SPEC.md` en intégralité ava
 
 ## État courant
 
-- Phase en cours : **P0 — Socle**
+- Phase en cours : **P1 — La télé** (P0 validée le 2026-08-02)
 - (Mettre à jour cette ligne à chaque phase validée.)
 
 ## Règles de travail

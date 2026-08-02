@@ -1,4 +1,47 @@
-# P0 — Socle
+# P1 — La télé
+
+Plan (spec §16 + §9 androidtv-driver). DoD : « lance Netflix » de bout en bout via
+`home/cmd` (TV réveillée + app ouverte) — la validation finale exige la TV réelle
+(pairing par code écran) → partie humaine dans TODO_LJ.md.
+
+## Todo
+
+- [x] `apps/drivers/androidtv` : driver traducteur pur sur `@kud/androidtv-remote` 0.1.2
+      (power, launch_app, key, volume, send_text ; events → percept `media` tv_salon)
+- [x] Pairing interactif (`stellar-androidtv pair`, code affiché à l'écran) → cert JSON
+      gitignoré (sops à brancher)
+- [x] Manifeste discovery + health LWT + logs JSON (règles communes drivers)
+- [x] Tests : mapping Command→remote et events→Entity avec un FakeRemote (8 tests)
+- [x] `apps/core` : miroir minimal — states par sélecteurs + agrégat manifestes
+      discovery + santé drivers (4 tests)
+- [x] `pnpm check:p1` + CI mise à jour
+- [x] TODO_LJ.md : étapes humaines (veille réseau TV, IP fixe, pairing, Midea P4.0)
+
+## Review
+
+- `pnpm check:p1` vert : build + lint + typecheck + 32 tests (contracts 14, bus 6,
+  androidtv 8, core 4).
+- Le test « DoD » du driver rejoue « lance Netflix » : commande `launch_app` sur
+  `home/cmd/androidtv/tv_salon` → TV réveillée (`sendPower`) + deep link Netflix envoyé,
+  ack ok ; les events du protocole alimentent le percept `media` retained.
+- **La validation finale du DoD exige la TV réelle** (pairing par code écran) —
+  étapes humaines dans TODO_LJ.md ; ensuite : `ATV_HOST=<ip> stellar-androidtv pair`
+  puis `run`, et `stellar cmd androidtv tv_salon launch_app '{"app":"netflix"}'`.
+- Choix notables :
+  - `power` traduit l'intention on/off vers le `sendPower()` toggle de la lib en
+    s'appuyant sur l'état connu (traduction, pas de logique métier).
+  - `launch_app` réveille la TV si elle est éteinte (exigence du DoD).
+  - Reconnexion : restart de session avec backoff 5 s → 60 s sur erreur protocole ;
+    `unpaired` → exit(1) explicite (re-pairing requis).
+  - Fix au passage dans le logger bus : les champs réservés ts/level/driver/msg ne
+    peuvent plus être écrasés par les champs extra.
+- Fixtures de trames réelles (spec) : non applicables ici — on s'appuie sur la lib
+  maintenue `@kud/androidtv-remote` (protocole protobuf TLS) ; des fixtures d'events
+  réels pourront être enregistrées à la première connexion à la vraie TV.
+
+---
+
+# P0 — Socle (validée 2026-08-02)
 
 Plan d'exécution (spec §16, DoD : fake-driver publie un state typé validé par un fake-consumer ; `pnpm test` vert ; `pnpm check:p0`).
 
