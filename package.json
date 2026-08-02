@@ -14,7 +14,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm build && pnpm -r run test",
-    "check:p0": "pnpm build && pnpm lint && pnpm typecheck && pnpm -r run test"
+    "check:p0": "pnpm build && pnpm lint && pnpm typecheck && pnpm -r run test",
+    "check:p1": "pnpm build && pnpm lint && pnpm typecheck && pnpm -r run test"
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",
