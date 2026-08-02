@@ -1,0 +1,27 @@
+{
+  "name": "@stellar/bus",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.typecheck.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@stellar/contracts": "workspace:*",
+    "mqtt": "^5.10.0"
+  },
+  "devDependencies": {
+    "aedes": "^0.51.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.0"
+  }
+}
