@@ -1,0 +1,15 @@
+# Infra Stellar — P0 : mosquitto seul. Z2M, HA, whisper, piper arriveront avec leurs phases.
+# LAN uniquement — zéro port ouvert vers l'extérieur (spec §14).
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: stellar-mosquitto
+    restart: unless-stopped
+    ports:
+      - '1883:1883'
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+
+volumes:
+  mosquitto-data:
