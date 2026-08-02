@@ -1,0 +1,6 @@
+packages:
+  - packages/*
+  - apps/*
+  - apps/drivers/*
+allowBuilds:
+  esbuild: true

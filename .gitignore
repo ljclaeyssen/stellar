@@ -1,0 +1,22 @@
+# deps / build
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# env & secrets — seuls les *.enc.yaml (sops) sont versionnés
+.env
+.env.*
+config/*.dec.yaml
+config/secrets.yaml
+*.key
+*.pem
+
+# runtime
+*.log
+infra/mosquitto/data/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
