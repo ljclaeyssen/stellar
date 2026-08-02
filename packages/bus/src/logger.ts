@@ -10,8 +10,9 @@ export interface Logger {
 
 export function createLogger(driver: string): Logger {
   const emit = (level: LogLevel, msg: string, extra?: Record<string, unknown>): void => {
+    // extra d'abord : les champs réservés (ts/level/driver/msg) ne sont jamais écrasés
     process.stdout.write(
-      `${JSON.stringify({ ts: new Date().toISOString(), level, driver, msg, ...extra })}\n`,
+      `${JSON.stringify({ ...extra, ts: new Date().toISOString(), level, driver, msg })}\n`,
     );
   };
   return {
