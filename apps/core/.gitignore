@@ -1,0 +1,2 @@
+# Journal SQLite (CORE_DB_PATH, défaut ./data/journal.db) et ses fichiers WAL.
+data/

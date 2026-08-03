@@ -4,6 +4,7 @@ import {
   BusEvent,
   Command,
   Manifest,
+  TOPIC_ROOT,
   ackTopic,
   cmdTopic,
   discoveryTopic,
@@ -233,6 +234,11 @@ export async function createBus(options: CreateBusOptions): Promise<Bus> {
 
   client.on('message', (topic, payload, packet) => {
     void (async () => {
+      // Le client peut porter des souscriptions hors bus (ex. z2m-normalizer sur
+      // zigbee2mqtt/#) : le dispatch du bus ne juge que les topics home/… — les
+      // autres appartiennent aux abonnés bruts et ne sont ni parsés ni loggés ici.
+      if (topic !== TOPIC_ROOT && !topic.startsWith(`${TOPIC_ROOT}/`)) return;
+
       // Payload vide = effacement du retained (sémantique MQTT), pas une erreur.
       if (payload.length === 0) {
         const parts = parseStateTopic(topic);

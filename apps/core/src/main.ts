@@ -1,10 +1,17 @@
 #!/usr/bin/env node
 import process from 'node:process';
 import { createBus, createLogger } from '@stellar/bus';
-import { createMirror } from './mirror.js';
+import { createCore } from './core.js';
 
 const logger = createLogger('core');
 const mqttUrl = process.env.STELLAR_MQTT_URL ?? 'mqtt://localhost:1883';
+const dbPath = process.env.CORE_DB_PATH ?? 'data/journal.db';
+const apiPort = Number(process.env.CORE_API_PORT ?? 8850);
+
+if (!Number.isInteger(apiPort) || apiPort < 0 || apiPort > 65_535) {
+  logger.error('CORE_API_PORT invalide', { value: process.env.CORE_API_PORT });
+  process.exit(1);
+}
 
 /** Masque `user:pass@` dans une URL MQTT — les logs partent en clair vers journald. */
 function redactUrl(url: string): string {
@@ -12,14 +19,14 @@ function redactUrl(url: string): string {
 }
 
 const bus = await createBus({ url: mqttUrl, clientId: 'core', driver: 'core' });
-const mirror = await createMirror({
-  bus,
-  logger,
-  onChange: (entity) =>
-    logger.info('state', { id: entity.id, kind: entity.kind, room: entity.room }),
-});
+const core = await createCore({ bus, logger, journalPath: dbPath, apiPort });
 
-logger.info('core démarré (miroir minimal)', { mqttUrl: redactUrl(mqttUrl) });
+logger.info('core démarré', {
+  mqttUrl: redactUrl(mqttUrl),
+  dbPath,
+  apiPort: core.api?.port,
+  journalRows: core.journal.count(),
+});
 
 let shuttingDown = false;
 
@@ -31,17 +38,20 @@ function shutdown(signal: string): void {
   // Filet : si le broker ne répond plus, bus.close() peut ne jamais résoudre.
   // .unref() pour ne pas maintenir le process en vie si l'arrêt se passe bien.
   const forceExit = setTimeout(() => {
-    logger.error('arrêt forcé — fermeture du bus trop lente', { signal });
+    logger.error('arrêt forcé — fermeture trop lente', { signal });
     process.exit(1);
   }, 5_000);
   forceExit.unref();
 
-  logger.info('arrêt', { signal, entities: mirror.getStates().length });
+  logger.info('arrêt', { signal, entities: core.mirror.getStates().length });
+  // Bus d'abord (plus aucun message n'arrive), core ensuite (le journal se ferme
+  // sur un flux tari).
   void bus
     .close()
+    .then(() => core.close())
     .then(() => process.exit(0))
     .catch((err: unknown) => {
-      logger.error('échec de la fermeture du bus', { signal, err: String(err) });
+      logger.error("échec de l'arrêt", { signal, err: String(err) });
       process.exit(1);
     });
 }

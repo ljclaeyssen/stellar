@@ -1,9 +1,13 @@
 {
+  // Projet de *lint et de typecheck* : il revendique tout `src`, specs comprises
+  // (même motif que apps/drivers/*). Les specs d'apps/core sortent donc de la
+  // liste `allowDefaultProject` d'eslint.config.js — un fichier ne peut pas être à
+  // la fois dans un projet et dans le projet par défaut.
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "noEmit": true
   },
-  "include": ["src"],
-  "exclude": ["src/**/*.spec.ts"]
+  "include": ["src"]
 }

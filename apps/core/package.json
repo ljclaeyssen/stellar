@@ -7,17 +7,23 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.typecheck.json",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "start": "node dist/main.js"
   },
   "dependencies": {
     "@stellar/bus": "workspace:*",
-    "@stellar/contracts": "workspace:*"
+    "@stellar/contracts": "workspace:*",
+    "@trpc/server": "^11.18.0",
+    "better-sqlite3": "^13.0.2",
+    "ws": "^8.21.1",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@stellar/test-utils": "workspace:*",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/ws": "^8.18.1",
     "typescript": "^5.7.3",
     "vitest": "^3.0.0"
   }
