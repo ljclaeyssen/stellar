@@ -4,8 +4,8 @@ import type { Kind } from './kind.js';
 export const ClimateMode = z.enum(['heat', 'cool', 'fan', 'dry', 'auto']);
 export type ClimateMode = z.infer<typeof ClimateMode>;
 
-/** °C */
-export const TemperatureValue = z.number();
+/** °C — bornes physiques plausibles pour une sonde domestique/extérieure. */
+export const TemperatureValue = z.number().min(-50).max(80);
 /** % HR */
 export const HumidityValue = z.number().min(0).max(100);
 export const PresenceValue = z.boolean();
@@ -56,7 +56,12 @@ export const WeatherValue = z.record(z.unknown());
 /** kinds réservés futur : aucune contrainte tant que le besoin n'existe pas */
 const ReservedValue = z.unknown();
 
-export const valueSchemas: Record<Kind, z.ZodTypeAny> = {
+/**
+ * `satisfies` plutôt qu'une annotation `Record<Kind, z.ZodTypeAny>` : on garde le
+ * type précis de chaque schéma (indispensable aux guards typés de `guards.ts`)
+ * tout en garantissant l'exhaustivité sur `Kind`.
+ */
+export const valueSchemas = {
   temperature: TemperatureValue,
   humidity: HumidityValue,
   presence: PresenceValue,
@@ -71,7 +76,7 @@ export const valueSchemas: Record<Kind, z.ZodTypeAny> = {
   button: ReservedValue,
   doorbell: ReservedValue,
   lock: ReservedValue,
-};
+} satisfies Record<Kind, z.ZodTypeAny>;
 
 export type TemperatureValue = z.infer<typeof TemperatureValue>;
 export type HumidityValue = z.infer<typeof HumidityValue>;

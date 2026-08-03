@@ -2,6 +2,14 @@ import { createBroker } from 'aedes';
 import { createServer, type Server } from 'node:net';
 
 /**
+ * Outils de test partagés — consommés **en source** depuis les `*.spec.ts`
+ * (pas de build : l'export `.` pointe directement sur `src/index.ts`).
+ *
+ * Les attentes se font avec `vi.waitFor` / `expect.poll` de vitest : pas de
+ * helper `waitFor` maison ici.
+ */
+
+/**
  * Broker MQTT en mémoire pour les tests d'intégration (spec §15).
  * aedes ne supporte MQTT 5 que partiellement → les tests utilisent
  * protocolVersion 4 ; le fallback `home/ack/<commandId>` couvre le req/resp.

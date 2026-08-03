@@ -1,15 +1,16 @@
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
+  ClimateValue,
   Manifest,
   toJsonSchema,
-  ClimateValue,
   type Ack,
+  type Command,
   type Entity,
   type Health,
 } from '@stellar/contracts';
+import { startTestBroker, type TestBroker } from '@stellar/test-utils';
 import { createBus, type Bus } from './bus.js';
-import { startTestBroker, type TestBroker } from './test-broker.js';
 
 /**
  * DoD P0 (spec §16) : « un fake-driver publie un state typé qu'un fake-consumer valide ».
@@ -76,7 +77,7 @@ describe('P0 DoD — fake-driver → fake-consumer', () => {
     await consumer.onState({ kind: 'temperature' }, (entity) => seen.push(entity));
 
     // Publication brute (sans passer par publishState qui refuserait) : value string ≠ number.
-    await consumer.client.publishAsync(
+    await fakeDriver.client.publishAsync(
       'home/state/fake/temp_bidon',
       JSON.stringify({
         id: 'temp_bidon',
@@ -87,6 +88,8 @@ describe('P0 DoD — fake-driver → fake-consumer', () => {
       }),
       { qos: 1, retain: false },
     );
+    // Sentinelle valide publiée APRÈS : quand elle arrive, l'invalide est forcément
+    // déjà passé dans le dispatch (ordre garanti par la connexion TCP).
     const valid: Entity = {
       id: 'temp_salon',
       driver: 'fake',
@@ -98,20 +101,14 @@ describe('P0 DoD — fake-driver → fake-consumer', () => {
     };
     await fakeDriver.publishState(valid);
 
-    await new Promise<void>((resolve) => {
-      const check = (): void => {
-        if (seen.length > 0) resolve();
-        else setTimeout(check, 20);
-      };
-      check();
-    });
+    await vi.waitFor(() => expect(seen.map((e) => e.id)).toContain('temp_salon'));
     expect(seen).toHaveLength(1);
-    expect(seen[0]?.id).toBe('temp_salon');
   });
 
   it('aller-retour commande → ack via le fallback home/ack', async () => {
+    const handled: Command[] = [];
     await fakeDriver.onCommand((cmd): Ack => {
-      expect(cmd.target).toBe('clim_salon');
+      handled.push(cmd);
       return { commandId: cmd.id, status: 'ok' };
     });
 
@@ -127,6 +124,8 @@ describe('P0 DoD — fake-driver → fake-consumer', () => {
       { driver: 'fake', timeoutMs: 2_000 },
     );
     expect(ack.status).toBe('ok');
+    expect(handled).toHaveLength(1);
+    expect(handled[0]?.target).toBe('clim_salon');
   });
 
   it('renvoie un Ack timeout quand personne ne répond', async () => {
@@ -145,18 +144,15 @@ describe('P0 DoD — fake-driver → fake-consumer', () => {
   });
 
   it('transmet un événement ponctuel', async () => {
-    const received = new Promise<string>((resolve) => {
-      void consumer.onEvent('fake/+', (event) => resolve(event.type));
-    });
-    // petite marge pour que la souscription soit effective (event non retained)
-    await new Promise((r) => setTimeout(r, 100));
+    const types: string[] = [];
+    await consumer.onEvent('fake/+', (event) => types.push(event.type));
     await fakeDriver.publishEvent({
       driver: 'fake',
       type: 'button_pressed',
       data: { button: 'test' },
       ts: new Date().toISOString(),
     });
-    expect(await received).toBe('button_pressed');
+    await vi.waitFor(() => expect(types).toContain('button_pressed'));
   });
 });
 
@@ -186,21 +182,12 @@ describe('health / LWT', () => {
       reconnectMinMs: 60_000, // pas de reconnexion pendant le test
     });
 
-    const waitFor = async (predicate: () => boolean, timeoutMs = 3_000): Promise<void> => {
-      const start = Date.now();
-      while (!predicate()) {
-        if (Date.now() - start > timeoutMs) throw new Error('timeout');
-        await new Promise((r) => setTimeout(r, 25));
-      }
-    };
-
-    await waitFor(() => statuses.includes('online'));
+    await vi.waitFor(() => expect(statuses).toContain('online'));
     // Déconnexion brutale → le broker doit publier le will 'offline' retained.
     mortal.client.stream.destroy();
-    await waitFor(() => statuses.includes('offline'));
+    await vi.waitFor(() => expect(statuses).toContain('offline'));
 
     expect(statuses[0]).toBe('online');
-    expect(statuses).toContain('offline');
 
     mortal.client.end(true);
     await watcher.close();

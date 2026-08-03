@@ -9,7 +9,9 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.typecheck.json",
@@ -20,7 +22,7 @@
     "mqtt": "^5.10.0"
   },
   "devDependencies": {
-    "aedes": "^0.51.0",
+    "@stellar/test-utils": "workspace:*",
     "typescript": "^5.7.3",
     "vitest": "^3.0.0"
   }

@@ -1,6 +1,7 @@
 export * from './kind.js';
 export * from './values.js';
 export * from './entity.js';
+export * from './guards.js';
 export * from './command.js';
 export * from './manifest.js';
 export * from './event.js';

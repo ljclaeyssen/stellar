@@ -96,9 +96,9 @@ importers:
         specifier: ^5.10.0
         version: 5.15.2(supports-color@7.2.0)
     devDependencies:
-      aedes:
-        specifier: ^0.51.0
-        version: 0.51.3(supports-color@7.2.0)
+      '@stellar/test-utils':
+        specifier: workspace:*
+        version: link:../test-utils
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -121,6 +121,12 @@ importers:
       vitest:
         specifier: ^3.0.0
         version: 3.2.7(@types/node@26.1.2)(supports-color@7.2.0)
+
+  packages/test-utils:
+    dependencies:
+      aedes:
+        specifier: ^0.51.0
+        version: 0.51.3(supports-color@7.2.0)
 
 packages:
 
