@@ -10,13 +10,28 @@
 
 ---
 
-# P5 — Serveur + percepts (en cours, mode simulé — matériel N100/Zigbee humain)
+# P6 — Tempo + régulation (en cours, mode simulé)
 
-Deux chantiers parallèles : z2m-normalizer + sim-z2m (table de mapping
-déclarative JSON, availability → stale) ; core (journal SQLite §10, stale
-watcher à horloge injectée — mort silencieuse, complément d'ADR-009 —, API
-tRPC + WS). DoD simulé : états live via getStates, journal qui grossit, alerte
-stale démontrée. Matériel : TODO_LJ (N100, Z2M, capteurs, kVA Linky).
+Deux chantiers : tempo-driver + sim (RTE OAuth + fallback opendata sans compte,
+wrap 6 h, bascule HP/HC à l'heure juste, DST) ; module régulation dans le core
+(`decide` pur + runtime, hystérésis ±0,4, politique Tempo, préchauffe HC,
+délestage avec réarmement, anti-court-cycle, causes lisibles sur chaque
+décision, **golden tests** journée type). DoD simulé : scénarios golden relus ;
+le DoD réel « une semaine d'autonomie » attendra le matériel.
+
+---
+
+# P5 — Serveur + percepts (DoD simulé atteint le 2026-08-03 — matériel N100/Zigbee humain)
+
+- [x] core : journal SQLite (§10 exact, « un fait pas une opinion »), stale
+      watcher mort-silencieuse (horloge injectée, ts d'origine conservé,
+      idempotent, complément ADR-009), API tRPC+WS un port (AppRouter exporté),
+      createCore assemblé, 45 tests dont p5-dod
+- [x] z2m-normalizer : table déclarative config/z2m-mapping.json (9 entités,
+      FieldRef avec scale par champ), availability 2 formats → stale, silence ≠
+      stale (rôle du core), dump de recalage, 26 tests
+- [x] sim-z2m publisher MQTT ; fix bus : topics hors home/ ignorés du dispatch
+- [x] check racine vert (258 tests) ; zod ajouté au core (validation API)
 
 ---
 

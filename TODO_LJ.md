@@ -112,6 +112,17 @@ ne jamais régénérer un token depuis le portail pendant que le driver tourne
 5. Démo stale réelle : retirer la pile d'un capteur, attendre le seuil, vérifier
    l'alerte (`home/event/core/stale_alert`).
 
+## P6 — Tempo + régulation
+
+- **Me donner la puissance souscrite Linky (kVA)** — le `max_va` de
+  `config/regulation.yaml` est une hypothèse à 9 kVA en attendant.
+- Optionnel (le fallback opendata marche sans compte) : compte
+  https://data.rte-france.com → créer une application → souscrire l'API « Tempo
+  Like Supply Contract » → me donner client id/secret (sops) pour la source
+  primaire RTE.
+- Relire `config/regulation.yaml` (consignes par pièce, plage nuit, ordre de
+  délestage) — ce sont TES réglages de confort, j'ai mis des valeurs plausibles.
+
 ## P1 — La télé (pour valider le DoD)
 
 - Activer la **veille réseau** sur la TV Android TV (ne jamais la couper par une prise).
