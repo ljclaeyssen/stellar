@@ -32,11 +32,17 @@ export default tseslint.config(
            * fichiers concernés est plafonné (8 par défaut). Si ce plafond saute, la
            * vraie correction est de scinder chaque package en tsconfig.json (lint,
            * tout `src`) + tsconfig.build.json (émission).
+           *
+           * Le plafond a sauté en P2 : `apps/drivers/hue` applique la scission et
+           * revendique donc ses propres specs — il ne doit PAS figurer ici (un
+           * fichier à la fois dans un projet et dans allowDefaultProject est une
+           * erreur de parsing). D'où le glob nommément limité à androidtv : le
+           * prochain driver fera la scission lui aussi.
            */
           allowDefaultProject: [
             'packages/*/src/*.spec.ts',
             'apps/*/src/*.spec.ts',
-            'apps/drivers/*/src/*.spec.ts',
+            'apps/drivers/androidtv/src/*.spec.ts',
           ],
           defaultProject: 'tsconfig.lint.json',
         },

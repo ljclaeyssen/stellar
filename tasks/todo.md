@@ -10,22 +10,33 @@
 
 ---
 
-# P2 — Lumières & prises (en cours, mode simulé — ADR-010)
-
-DoD simulé : inventaire sim-hue publié en entités retained conformes ; `set {on}`
-→ ack < 300 ms mesuré + state mis à jour via SSE ; pairing simulé ; verify.
-DoD matériel (bridge réel) : checklist dans TODO_LJ.md.
+# P2 — Lumières & prises (DoD simulé atteint le 2026-08-03)
 
 ## Todo
 
-- [ ] `apps/simulators/hue` (@stellar/sim-hue) : CLIP v2 simulé (light/device/room,
-      PUT + event SSE, pairing link button), lançable seul, état par défaut 3 lights
-      dont 1 prise
-- [ ] `apps/drivers/hue` : couture HueApiLike (REST + SSE + reconnexion), mapping
-      inventaire → entités (light_<room>_<nom> / plug_<nom>), driver (SSE → state,
-      cmd set → PUT → ack), pair, verify (fixtures réelles jour J), main run/pair/verify
-- [ ] Tests niveau 2 contre le simulateur (ack < 300 ms, stale ADR-009, resync)
-- [ ] check racine vert + commits
+- [x] `apps/simulators/hue` (@stellar/sim-hue) : CLIP v2 simulé (light/device/room,
+      PUT + event SSE, pairing link button), lançable seul, état = fixtures
+- [x] `apps/drivers/hue` : couture HueApiLike (REST + SSE + reconnexion 1 s→30 s),
+      mapping inventaire → entités (light_<room>_<nom> / plug_<nom>), driver
+      (SSE → state, cmd set → PUT → ack 2xx), pair (boucle 101), verify (dump
+      fixtures + résumé), main run/pair/verify
+- [x] Tests niveau 2 contre le simulateur : 29 verts — **ack mesuré 5,6 ms**
+      (DoD < 300 ms), stale + rejet bridge down, resync complet au retour
+- [x] `pnpm check` racine vert (119 tests) + `check:p2`
+
+## Review
+
+- Le SSE est la sonde de vie du bridge (ADR-009) ; retour → ré-inventaire complet
+  (une lampe a pu être renommée pendant la coupure). Inventaire initial
+  best-effort : bridge éteint au démarrage ≠ crash, self-healing à l'onUp.
+- Prises : CLIP v2 les expose en `light` archetype `plug` → kind `plug`
+  (ADR-006 avancé, à confirmer au verify réel).
+- Dette consciente : une lampe supprimée du bridge laisse un retained fantôme —
+  il manque un `deleteState` au Bus (symétrique d'onStateDeleted). **À traiter
+  en P5** avec le miroir/journal.
+- Scission tsconfig lint/build faite pour hue (plafond allowDefaultProject) —
+  les prochains drivers font pareil.
+- DoD matériel : checklist TODO_LJ (pair → verify → run).
 
 ---
 

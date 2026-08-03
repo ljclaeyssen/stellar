@@ -18,6 +18,7 @@
     "check": "pnpm build && pnpm lint && pnpm typecheck && pnpm format:check && pnpm -r run test",
     "check:p0": "pnpm check",
     "check:p1": "pnpm check",
+    "check:p2": "pnpm check",
     "secrets:encrypt": "sops -e -i",
     "secrets:decrypt": "sops -d"
   },

@@ -15,6 +15,10 @@ power, lancement d'app, touches, volume.
   une prise pilotée ; veille réseau activée, IP fixe.
 - Reste ouvert : nature des prises connectées du foyer (si sur le bridge Hue →
   P2 ; sinon prises Zigbee ~10 €/u en P4/P5).
+- Avancée P2 (2026-08-03) : CLIP v2 expose les prises comme ressources `light`
+  d'archetype `plug` — le hue-driver les publie en kind `plug` (repli sur
+  l'archetype du device pour les firmwares qui ne le posent que là). À
+  confirmer sur l'inventaire réel au premier `stellar-hue verify`.
 
 ## Conséquences
 
