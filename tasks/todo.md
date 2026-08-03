@@ -81,7 +81,7 @@ Plan d'exécution (spec §16, DoD : fake-driver publie un state typé validé pa
     (1 s → 30 s max), reset à la reconnexion.
 - Non testé en réel : mosquitto via docker (daemon Docker arrêté pendant la session) ;
   `docker compose config` validé. À faire au premier démarrage : `docker compose -f
-  infra/docker-compose.yml up -d` puis `stellar states --follow`.
+infra/docker-compose.yml up -d` puis `stellar states --follow`.
 - Reste à l'humain : valider la phase (mettre à jour « Phase en cours » dans CLAUDE.md),
   et surtout **P4.0 atelier tokens Midea** (spec §9/§16 : « faisable dès aujourd'hui,
   la fenêtre cloud se referme ») — nécessite le compte SmartHome + le LAN de la maison.
