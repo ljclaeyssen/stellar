@@ -4,5 +4,6 @@ packages:
   - apps/drivers/*
   - apps/simulators/*
 allowBuilds:
+  better-sqlite3: true
   esbuild: true
   protobufjs: true

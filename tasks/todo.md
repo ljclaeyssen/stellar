@@ -10,6 +10,16 @@
 
 ---
 
+# P5 — Serveur + percepts (en cours, mode simulé — matériel N100/Zigbee humain)
+
+Deux chantiers parallèles : z2m-normalizer + sim-z2m (table de mapping
+déclarative JSON, availability → stale) ; core (journal SQLite §10, stale
+watcher à horloge injectée — mort silencieuse, complément d'ADR-009 —, API
+tRPC + WS). DoD simulé : états live via getStates, journal qui grossit, alerte
+stale démontrée. Matériel : TODO_LJ (N100, Z2M, capteurs, kVA Linky).
+
+---
+
 # P4 — Clims Midea (DoD simulé atteint le 2026-08-03 — atelier tokens P4.0 humain en attente)
 
 - [x] `packages/midea-protocol` : couture typée calée sur node-mideahvac 0.3.3

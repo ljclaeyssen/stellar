@@ -42,11 +42,14 @@ export default tseslint.config(
            * P4 : `packages/midea-protocol` et `apps/drivers/midea` scindent eux
            * aussi, d'où le glob `packages/*` remplacé par la liste des deux seuls
            * packages qui dépendent encore du projet par défaut.
+           *
+           * P5 : `apps/core` scinde à son tour (journal, stale, api → le plafond
+           * saute), d'où le glob `apps/*` remplacé par `apps/cli` seul.
            */
           allowDefaultProject: [
             'packages/bus/src/*.spec.ts',
             'packages/contracts/src/*.spec.ts',
-            'apps/*/src/*.spec.ts',
+            'apps/cli/src/*.spec.ts',
             'apps/drivers/androidtv/src/*.spec.ts',
           ],
           defaultProject: 'tsconfig.lint.json',

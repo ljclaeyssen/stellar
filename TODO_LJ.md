@@ -96,6 +96,22 @@ maison (spec §9 midea-driver) :
 ne jamais régénérer un token depuis le portail pendant que le driver tourne
 (ça invaliderait le sien).
 
+## P5 — Serveur + percepts (matériel ~380 €, quand tu veux)
+
+1. Achats (spec §3) : mini PC N100 16 Go/500 Go (~180 €), dongle Sonoff
+   ZBDongle-E (~28 €), 5× SNZB-02D (~65 €), 2× mmWave selon ADR-002 (~50 €),
+   LiXee ZLinky (~55 €). Me donner la **puissance souscrite** (kVA) pour le
+   délestage P6.
+2. N100 : Linux + docker, Ethernet si possible, bail DHCP statique. Migrer
+   l'infra (`docker compose up -d` + `STELLAR_MQTT_BIND=0.0.0.0` — voir le
+   commentaire du compose) et installer les units systemd de `infra/systemd/`.
+3. Zigbee2MQTT en container (dongle sur rallonge USB, canal 25/26), appairer les
+   capteurs avec des friendly_name parlants (`temp_salon`, `presence_salon`,
+   `zlinky`…) et compléter `config/z2m-mapping.json` (une ligne par capteur).
+4. `stellar-z2m dump` 30 s → fixtures réelles pour recaler le simulateur.
+5. Démo stale réelle : retirer la pile d'un capteur, attendre le seuil, vérifier
+   l'alerte (`home/event/core/stale_alert`).
+
 ## P1 — La télé (pour valider le DoD)
 
 - Activer la **veille réseau** sur la TV Android TV (ne jamais la couper par une prise).
