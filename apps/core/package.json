@@ -17,7 +17,7 @@
     "@stellar/contracts": "workspace:*"
   },
   "devDependencies": {
-    "aedes": "^0.51.0",
+    "@stellar/test-utils": "workspace:*",
     "typescript": "^5.7.3",
     "vitest": "^3.0.0"
   }

@@ -4,6 +4,7 @@ import process from 'node:process';
 import { Command as Cli } from 'commander';
 import { createBus, type Bus } from '@stellar/bus';
 import { Health, Selector, healthTopic } from '@stellar/contracts';
+import { idleWindow } from './idle-window.js';
 
 const program = new Cli();
 program
@@ -37,39 +38,6 @@ function fail(message: string): void {
 async function closeQuietly(bus: Bus): Promise<void> {
   await bus.client.publishAsync(healthTopic('cli'), '', { retain: true, qos: 1 });
   await bus.client.endAsync();
-}
-
-/**
- * Fenêtre d'inactivité : rend la main après `idleMs` sans nouveau message, et au
- * plus tard au bout de `maxMs`. Remplace un sleep fixe, qui était à la fois trop
- * court (rafale de retained tronquée sur un gros parc) et trop long (1,5 s d'attente
- * systématique pour trois entités).
- */
-function idleWindow(idleMs = 400, maxMs = 3_000): { bump: () => void; done: Promise<void> } {
-  let idleTimer: NodeJS.Timeout | undefined;
-  let settled = false;
-  let settle!: () => void;
-  const done = new Promise<void>((resolve) => {
-    settle = resolve;
-  });
-
-  const finish = (): void => {
-    if (settled) return;
-    settled = true;
-    clearTimeout(idleTimer);
-    settle();
-  };
-
-  const bump = (): void => {
-    if (settled) return;
-    clearTimeout(idleTimer);
-    idleTimer = setTimeout(finish, idleMs);
-  };
-
-  // Borne dure : un flux continu ne doit pas retenir le CLI indéfiniment.
-  setTimeout(finish, maxMs).unref();
-  bump();
-  return { bump, done };
 }
 
 program
