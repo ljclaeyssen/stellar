@@ -1,0 +1,59 @@
+{
+  "errors": [],
+  "data": [
+    {
+      "id": "f2c1a4e6-3b21-4a3e-9d5a-1f0b6c7d8e90",
+      "id_v1": "/lights/1",
+      "metadata": { "name": "Canapé", "archetype": "sultan_bulb" },
+      "product_data": {
+        "model_id": "LCA001",
+        "manufacturer_name": "Signify Netherlands B.V.",
+        "product_name": "Hue color lamp",
+        "product_archetype": "sultan_bulb",
+        "certified": true,
+        "software_version": "1.104.2"
+      },
+      "services": [
+        { "rid": "1f7a2b3c-4d5e-4f60-8a91-b2c3d4e5f601", "rtype": "light" },
+        { "rid": "9d1e2f30-1122-4334-8556-778899aabbcc", "rtype": "zigbee_connectivity" }
+      ],
+      "type": "device"
+    },
+    {
+      "id": "a1b2c3d4-5e6f-4071-8899-aabbccddeeff",
+      "id_v1": "/lights/2",
+      "metadata": { "name": "Prise TV", "archetype": "plug" },
+      "product_data": {
+        "model_id": "LOM007",
+        "manufacturer_name": "Signify Netherlands B.V.",
+        "product_name": "Hue smart plug",
+        "product_archetype": "plug",
+        "certified": true,
+        "software_version": "1.104.2"
+      },
+      "services": [
+        { "rid": "2a8b3c4d-5e6f-4071-9b02-c3d4e5f6a712", "rtype": "light" },
+        { "rid": "8c0d1e2f-0011-4223-9445-66778899aabb", "rtype": "zigbee_connectivity" }
+      ],
+      "type": "device"
+    },
+    {
+      "id": "0c9e7f21-4d3b-4c8a-9f11-2233445566aa",
+      "id_v1": "/lights/3",
+      "metadata": { "name": "Chevet", "archetype": "table_shade" },
+      "product_data": {
+        "model_id": "LTA001",
+        "manufacturer_name": "Signify Netherlands B.V.",
+        "product_name": "Hue ambiance lamp",
+        "product_archetype": "table_shade",
+        "certified": true,
+        "software_version": "1.104.2"
+      },
+      "services": [
+        { "rid": "3b9c4d5e-6f70-4182-ac13-d4e5f6a7b823", "rtype": "light" },
+        { "rid": "7b9c0d1e-ff00-4112-8334-5566778899aa", "rtype": "zigbee_connectivity" }
+      ],
+      "type": "device"
+    }
+  ]
+}

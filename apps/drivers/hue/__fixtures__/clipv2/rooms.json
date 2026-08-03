@@ -1,0 +1,24 @@
+{
+  "errors": [],
+  "data": [
+    {
+      "id": "4cad5e6f-7081-4293-bd24-e5f6a7b8c934",
+      "id_v1": "/groups/1",
+      "children": [
+        { "rid": "f2c1a4e6-3b21-4a3e-9d5a-1f0b6c7d8e90", "rtype": "device" },
+        { "rid": "a1b2c3d4-5e6f-4071-8899-aabbccddeeff", "rtype": "device" }
+      ],
+      "services": [{ "rid": "6ea6f778-0011-4223-9445-66778899aabb", "rtype": "grouped_light" }],
+      "metadata": { "name": "Salon", "archetype": "living_room" },
+      "type": "room"
+    },
+    {
+      "id": "5dbe6f70-8192-43a4-8e35-f6a7b8c9da45",
+      "id_v1": "/groups/2",
+      "children": [{ "rid": "0c9e7f21-4d3b-4c8a-9f11-2233445566aa", "rtype": "device" }],
+      "services": [{ "rid": "5fb5e667-1122-4334-8556-778899aabbcc", "rtype": "grouped_light" }],
+      "metadata": { "name": "Chambre", "archetype": "bedroom" },
+      "type": "room"
+    }
+  ]
+}

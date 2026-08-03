@@ -1,0 +1,16 @@
+{
+  // Projet de *lint et de typecheck* : il revendique tout `src`, specs comprises.
+  //
+  // Les autres packages laissent leurs `*.spec.ts` au projet par défaut de
+  // typescript-eslint ; ce package en ajoute deux, ce qui fait sauter le plafond
+  // de 8 fichiers (cf. le commentaire de `eslint.config.js`). La correction qui y
+  // est prescrite est appliquée ici : tsconfig.json revendique les specs,
+  // tsconfig.build.json se charge seul de l'émission.
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "noEmit": true
+  },
+  "include": ["src"]
+}
