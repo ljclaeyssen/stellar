@@ -228,9 +228,10 @@ describe('bus — souscriptions d’ack', () => {
     const ackSubs = subscribeSpy.mock.calls.filter((call) => call[0] === ACK_FILTER);
     expect(ackSubs).toHaveLength(1);
     // et surtout : aucune souscription par commandId
-    expect(subscribeSpy.mock.calls.some((call) => String(call[0]).startsWith('home/ack/c'))).toBe(
-      false,
-    );
+    const filters = subscribeSpy.mock.calls
+      .map((call) => call[0])
+      .filter((topic): topic is string => typeof topic === 'string');
+    expect(filters.some((topic) => topic.startsWith('home/ack/c'))).toBe(false);
     subscribeSpy.mockRestore();
   });
 

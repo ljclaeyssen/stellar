@@ -26,5 +26,5 @@ export function isKind<K extends Kind>(entity: Entity, kind: K): entity is Entit
 export function valueOf<K extends Kind>(entity: Entity, kind: K): ValueOf<K> | undefined {
   if (entity.kind !== kind) return undefined;
   const result = valueSchemas[kind].safeParse(entity.value);
-  return result.success ? (result.data as ValueOf<K>) : undefined;
+  return result.success ? result.data : undefined;
 }

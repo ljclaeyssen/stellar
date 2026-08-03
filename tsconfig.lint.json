@@ -1,0 +1,12 @@
+{
+  // Projet « par défaut » du project service typescript-eslint (cf. eslint.config.js).
+  // Il ne sert qu'aux fichiers qu'aucun tsconfig de package ne revendique — les
+  // `*.spec.ts`, exclus des tsconfig de build pour ne pas finir dans `dist/`.
+  // Il n'émet rien et ne liste aucun fichier : ce sont ses compilerOptions qui comptent.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "files": []
+}
