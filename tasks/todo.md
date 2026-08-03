@@ -10,6 +10,21 @@
 
 ---
 
+# P3 — Chauffage Netatmo (en cours, mode simulé)
+
+DoD simulé : consigne changée depuis le bus visible dans le simulateur ; météo en
+percepts ; **rotation du refresh token** prouvée (persistance atomique + reprise
+après redémarrage). DoD réel : checklist TODO_LJ (app OAuth + token generator).
+
+- [ ] `apps/simulators/netatmo` : OAuth à rotation stricte, Energy + Station,
+      helpers de panne (expire/revoke/failNext)
+- [ ] `apps/drivers/netatmo` : TokenStore atomique, couture NetatmoApiLike,
+      polling 2 cadences, thermostat_maison (climate) + percepts station,
+      set targetTemp/mode, verify, stale ADR-009
+- [ ] Tests niveau 2 + check racine vert + commits
+
+---
+
 # P2 — Lumières & prises (DoD simulé atteint le 2026-08-03)
 
 ## Todo

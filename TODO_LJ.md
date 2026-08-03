@@ -76,6 +76,26 @@ maison (spec §9 midea-driver) :
   et réponse à l'ADR-006 (la TV est-elle branchée sur une prise connectée ?).
 - Puis `stellar-hue run` et le DoD : `stellar cmd hue <entité> set '{"on":true}'`.
 
+## P3 — Netatmo (pour brancher le vrai thermostat + la station)
+
+1. Créer une app OAuth sur https://dev.netatmo.com (Mon compte → My apps → Create) :
+   noter **client id** et **client secret**.
+2. Sur la page de l'app, utiliser le **Token generator** : cocher les scopes
+   `read_thermostat write_thermostat read_station`, générer, et noter le
+   **refresh token**.
+3. Créer le fichier de tokens (gitignoré, à chiffrer sops ensuite) :
+   ```bash
+   echo '{"refreshToken":"<le-refresh-token>"}' > config/netatmo-token.json
+   ```
+4. `NETATMO_CLIENT_ID=… NETATMO_CLIENT_SECRET=… stellar-netatmo verify` →
+   fixtures réelles enregistrées, puis `run`. DoD réel : changer la consigne
+   depuis le bus (`stellar cmd netatmo thermostat_maison set '{"targetTemp":21}'`)
+   et la voir dans l'app Netatmo.
+
+⚠️ Le driver rafraîchit et fait tourner le refresh token tout seul ensuite —
+ne jamais régénérer un token depuis le portail pendant que le driver tourne
+(ça invaliderait le sien).
+
 ## P1 — La télé (pour valider le DoD)
 
 - Activer la **veille réseau** sur la TV Android TV (ne jamais la couper par une prise).
