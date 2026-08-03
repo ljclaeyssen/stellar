@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import process from 'node:process';
 import { Command as Cli } from 'commander';
 import { createBus, type Bus } from '@stellar/bus';
-import { Selector, healthTopic, type Health } from '@stellar/contracts';
+import { Health, Selector, healthTopic } from '@stellar/contracts';
 
 const program = new Cli();
 program
@@ -16,6 +16,62 @@ async function connect(): Promise<Bus> {
   return createBus({ url, clientId: `cli-${process.pid}`, driver: 'cli' });
 }
 
+/** Erreur d'usage : message lisible, pas de stack. */
+function fail(message: string): void {
+  console.error(message);
+  process.exitCode = 1;
+}
+
+/**
+ * Ferme la session en effaçant la trace `home/health/cli`.
+ *
+ * Le bus publie un health retained à la connexion : un outil éphémère n'a rien à
+ * faire dans le magasin d'états, chaque invocation du CLI y laisserait un fantôme.
+ * On publie donc un payload vide retained (= suppression côté broker), puis on
+ * termine la connexion proprement — un DISCONNECT normal supprime aussi le LWT.
+ *
+ * On n'appelle volontairement PAS `bus.close()` : il republie un health `offline`
+ * retained, qui ressusciterait exactement la trace qu'on veut effacer.
+ * Palliatif — la vraie correction est une option `publishHealth: false` côté bus.
+ */
+async function closeQuietly(bus: Bus): Promise<void> {
+  await bus.client.publishAsync(healthTopic('cli'), '', { retain: true, qos: 1 });
+  await bus.client.endAsync();
+}
+
+/**
+ * Fenêtre d'inactivité : rend la main après `idleMs` sans nouveau message, et au
+ * plus tard au bout de `maxMs`. Remplace un sleep fixe, qui était à la fois trop
+ * court (rafale de retained tronquée sur un gros parc) et trop long (1,5 s d'attente
+ * systématique pour trois entités).
+ */
+function idleWindow(idleMs = 400, maxMs = 3_000): { bump: () => void; done: Promise<void> } {
+  let idleTimer: NodeJS.Timeout | undefined;
+  let settled = false;
+  let settle!: () => void;
+  const done = new Promise<void>((resolve) => {
+    settle = resolve;
+  });
+
+  const finish = (): void => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(idleTimer);
+    settle();
+  };
+
+  const bump = (): void => {
+    if (settled) return;
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(finish, idleMs);
+  };
+
+  // Borne dure : un flux continu ne doit pas retenir le CLI indéfiniment.
+  setTimeout(finish, maxMs).unref();
+  bump();
+  return { bump, done };
+}
+
 program
   .command('states')
   .description('affiche les états (retained) filtrés par sélecteur, --follow pour suivre')
@@ -26,13 +82,14 @@ program
   .action(async (opts: { kind?: string; room?: string; driver?: string; follow: boolean }) => {
     const selector = Selector.parse({ kind: opts.kind, room: opts.room, driver: opts.driver });
     const bus = await connect();
+    const burst = idleWindow();
     await bus.onState(selector, (entity) => {
+      burst.bump();
       console.log(JSON.stringify(entity));
     });
     if (!opts.follow) {
-      // le temps de recevoir les retained
-      await new Promise((r) => setTimeout(r, 1_500));
-      await bus.close();
+      await burst.done;
+      await closeQuietly(bus);
     }
   });
 
@@ -52,21 +109,43 @@ program
       params: string,
       opts: { timeout: string },
     ) => {
+      // Tout ce qui peut échouer sur une faute de frappe est validé avant de
+      // toucher au broker.
+      const timeoutMs = Number(opts.timeout);
+      if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) {
+        fail(`--timeout invalide : "${opts.timeout}" (attendu : un entier de millisecondes > 0)`);
+        return;
+      }
+
+      let parsedParams: Record<string, unknown>;
+      try {
+        parsedParams = JSON.parse(params) as Record<string, unknown>;
+      } catch (err) {
+        fail(`params JSON illisible : ${(err as Error).message}\n  reçu : ${params}`);
+        return;
+      }
+
       const bus = await connect();
-      const ack = await bus.sendCommand(
-        {
-          id: randomUUID(),
-          target: entityId,
-          action,
-          params: JSON.parse(params) as Record<string, unknown>,
-          issuedBy: 'cli',
-          ts: new Date().toISOString(),
-        },
-        { driver, timeoutMs: Number(opts.timeout) },
-      );
-      console.log(JSON.stringify(ack));
-      await bus.close();
-      process.exitCode = ack.status === 'ok' ? 0 : 1;
+      try {
+        const ack = await bus.sendCommand(
+          {
+            id: randomUUID(),
+            target: entityId,
+            action,
+            params: parsedParams,
+            issuedBy: 'cli',
+            ts: new Date().toISOString(),
+          },
+          { driver, timeoutMs },
+        );
+        console.log(JSON.stringify(ack));
+        process.exitCode = ack.status === 'ok' ? 0 : 1;
+      } catch (err) {
+        // Cas courant : aucun ack en `timeoutMs` (driver absent ou muet).
+        fail(`commande échouée : ${(err as Error).message}`);
+      } finally {
+        await closeQuietly(bus);
+      }
     },
   );
 
@@ -76,18 +155,31 @@ program
   .option('-f, --follow', 'rester abonné', false)
   .action(async (opts: { follow: boolean }) => {
     const bus = await connect();
+    const burst = idleWindow();
     await bus.client.subscribeAsync(healthTopic('+'), { qos: 1 });
     bus.client.on('message', (topic, payload) => {
+      burst.bump();
+      // Payload vide = effacement d'un retained (cf. closeQuietly), rien à afficher.
+      if (payload.length === 0) return;
+      let raw: unknown;
       try {
-        const health = JSON.parse(payload.toString()) as Health;
-        console.log(JSON.stringify({ driver: topic.split('/')[2], ...health }));
+        raw = JSON.parse(payload.toString());
       } catch {
         console.error(`payload illisible sur ${topic}`);
+        return;
       }
+      const parsed = Health.safeParse(raw);
+      if (!parsed.success) {
+        console.error(
+          `health non conforme sur ${topic} : ${parsed.error.issues[0]?.message ?? ''}`,
+        );
+        return;
+      }
+      console.log(JSON.stringify({ driver: topic.split('/')[2], ...parsed.data }));
     });
     if (!opts.follow) {
-      await new Promise((r) => setTimeout(r, 1_500));
-      await bus.close();
+      await burst.done;
+      await closeQuietly(bus);
     }
   });
 
