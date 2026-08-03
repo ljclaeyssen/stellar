@@ -37,39 +37,44 @@ Budget total ≈ 600–650 € étalé, **0 € avant la phase P5**. Coût récu
 ## 3. Inventaire physique
 
 ### Existant (0 €)
-| Équipement | Détails |
-|---|---|
-| Philips Hue Bridge | Lampes + prise(s) connectée(s) sur le bridge. Inventaire exact en P2 (ADR-006 : prises). |
-| TV Android TV | Contrôle local via protocole Remote v2 (pairing par code affiché à l'écran). **Veille réseau à activer ; ne jamais couper son alimentation par une prise.** IP fixe à réserver. |
-| Thermostat Netatmo | Pilote la chaudière gaz (chauffage central). |
-| Station météo Netatmo | T° int/ext, humidité, CO2. |
-| 3 clims Midea | Pièces : **salon**, **entree**, **chambre**. Dongles WiFi d'origine (SmartKey). Compte actif sur l'app Midea « SmartHome ». Chaque unité remonte sa T° intérieure. |
-| Compteur Linky | Puissance souscrite : **à demander à l'humain** (nécessaire au délestage). |
-| Machines de dev | MacBook Pro / tour Windows — hébergent l'infra en P0–P3. |
+
+| Équipement            | Détails                                                                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Philips Hue Bridge    | Lampes + prise(s) connectée(s) sur le bridge. Inventaire exact en P2 (ADR-006 : prises).                                                                                        |
+| TV Android TV         | Contrôle local via protocole Remote v2 (pairing par code affiché à l'écran). **Veille réseau à activer ; ne jamais couper son alimentation par une prise.** IP fixe à réserver. |
+| Thermostat Netatmo    | Pilote la chaudière gaz (chauffage central).                                                                                                                                    |
+| Station météo Netatmo | T° int/ext, humidité, CO2.                                                                                                                                                      |
+| 3 clims Midea         | Pièces : **salon**, **entree**, **chambre**. Dongles WiFi d'origine (SmartKey). Compte actif sur l'app Midea « SmartHome ». Chaque unité remonte sa T° intérieure.              |
+| Compteur Linky        | Puissance souscrite : **à demander à l'humain** (nécessaire au délestage).                                                                                                      |
+| Machines de dev       | MacBook Pro / tour Windows — hébergent l'infra en P0–P3.                                                                                                                        |
 
 ### À acheter en P5 (~380 €)
+
 Mini PC N100 16 Go/500 Go (~180 €) · dongle Zigbee Sonoff ZBDongle-E (~28 €) · 5× capteurs T°/humidité Zigbee SNZB-02D (~65 €) · 2× mmWave (ADR-002, ~50 €) · LiXee ZLinky (~55 €).
 
 ### À acheter en P8 (~200–270 €)
+
 3–4× Home Assistant Voice PE (~65 €/u).
 
 ### Réseau
+
 LAN unique — **WiFi mesh en place : compatible**, sous conditions : un seul SSID/sous-réseau (jamais le réseau invité pour l'IoT), isolation AP/client désactivée ; le discovery broadcast Midea peut être filtré par le mesh → cibler les IP fixes ; coexistence 2,4 GHz : canaux WiFi fixés (1/6/11), canal Zigbee éloigné (25/26), dongle Zigbee sur rallonge USB loin du N100 ; N100 raccordé en Ethernet si possible. Réserver des baux DHCP statiques pour : bridge Hue, la TV, les 3 dongles Midea, (plus tard) le N100. Zéro port ouvert vers l'extérieur ; accès distant via Tailscale uniquement.
 
 ### Pièces (liste initiale, à confirmer avec l'humain)
+
 `salon`, `entree`, `chambre` (équipées clim) + autres pièces à inventorier (cuisine, sdb, bureau…).
 
 ## 4. Principes non négociables (avec leur pourquoi)
 
-1. **Le LLM n'est jamais dans une boucle de régulation temps réel** ni en contrôle de safety-critical (`lock`, alarmes, incendie). *Pourquoi : latence, coût, non-déterminisme ; un thermostat doit marcher à 3 h du matin sans API.*
-2. **Internet coupé → la maison continue.** Toute la régulation est locale et déterministe. *L'IA se tait, la maison vit.*
+1. **Le LLM n'est jamais dans une boucle de régulation temps réel** ni en contrôle de safety-critical (`lock`, alarmes, incendie). _Pourquoi : latence, coût, non-déterminisme ; un thermostat doit marcher à 3 h du matin sans API._
+2. **Internet coupé → la maison continue.** Toute la régulation est locale et déterministe. _L'IA se tait, la maison vit._
 3. **Tout état transite par MQTT (retained). Toute décision vit dans `apps/core`.** Les drivers traduisent, ils ne décident pas.
 4. **Contrats zod partagés**, validation à chaque frontière de process. Message invalide → loggé et jeté.
 5. **Pas de logique dans des composants tiers** (HACS interdit ; HA = plomberie voix + UI de secours uniquement).
 6. **Crash-isolation** : un process par driver, restart auto.
 7. **Ouverture** : core et agent ne référencent **jamais** un driver par son nom — uniquement des sélecteurs `kind` + `room`. Nouvel objet = un driver ou une ligne de mapping, zéro impact ailleurs.
 8. **Achat futur : Zigbee d'abord** (arrive par Z2M déjà en place, extensibilité gratuite).
-9. **Agent = Claude Agent SDK embarqué en service Node, sessions éphémères.** Claude Code CLI sert à *construire* Stellar (sessions de dev), jamais à le faire tourner.
+9. **Agent = Claude Agent SDK embarqué en service Node, sessions éphémères.** Claude Code CLI sert à _construire_ Stellar (sessions de dev), jamais à le faire tourner.
 
 ## 5. Architecture d'ensemble
 
@@ -98,6 +103,7 @@ Cloud strictement nécessaire : API Anthropic (cerveau), Web search/fetch (info 
 ## 6. Bus MQTT — conventions et exemples
 
 Topics :
+
 - `home/state/<driver>/<entityId>` — **retained**, contrat `Entity`
 - `home/cmd/<driver>/<entityId>` — commande ; réponse via MQTT 5 response-topic + correlation-data (fallback `home/ack/<commandId>`)
 - `home/event/<driver>/<type>` — ponctuel, non retained (ex. futur `home/event/doorbell/pressed`)
@@ -107,6 +113,7 @@ Topics :
 QoS 1 partout. JSON. Timestamps ISO 8601 UTC. `entityId` en snake_case : `<type>_<room>[_<detail>]` → `clim_salon`, `temp_chambre`, `light_salon_canape`, `plug_tv`, `thermostat_maison`, `power_maison`, `tempo_jour`.
 
 Exemples de payloads :
+
 ```json
 // home/state/midea/clim_salon (retained)
 { "id":"clim_salon","driver":"midea","kind":"climate","room":"salon",
@@ -125,34 +132,52 @@ Exemples de payloads :
 ## 7. Contrats (`packages/contracts`)
 
 ```ts
-export const Kind = z.enum(['temperature','humidity','presence','power','climate',
-  'light','plug','media','tempo','weather',
-  'cover','button','doorbell','lock']); // les 4 derniers : réservés futur ; 'lock' jamais piloté par l'agent
+export const Kind = z.enum([
+  'temperature',
+  'humidity',
+  'presence',
+  'power',
+  'climate',
+  'light',
+  'plug',
+  'media',
+  'tempo',
+  'weather',
+  'cover',
+  'button',
+  'doorbell',
+  'lock',
+]); // les 4 derniers : réservés futur ; 'lock' jamais piloté par l'agent
 
 export const Entity = z.object({
-  id: z.string(), driver: z.string(), kind: Kind,
+  id: z.string(),
+  driver: z.string(),
+  kind: Kind,
   room: z.string().optional(),
-  value: z.unknown(),            // affiné par kind via des schémas dédiés (ClimateValue, TempoValue…)
+  value: z.unknown(), // affiné par kind via des schémas dédiés (ClimateValue, TempoValue…)
   unit: z.string().optional(),
   ts: z.string().datetime(),
   stale: z.boolean().optional(),
 });
 
 export const Command = z.object({
-  id: z.string().uuid(), target: z.string(), action: z.string(),
+  id: z.string().uuid(),
+  target: z.string(),
+  action: z.string(),
   params: z.record(z.unknown()),
-  issuedBy: z.enum(['core','agent','voice','ui','cli']),
+  issuedBy: z.enum(['core', 'agent', 'voice', 'ui', 'cli']),
   ts: z.string().datetime(),
 });
 
 export const Ack = z.object({
   commandId: z.string().uuid(),
-  status: z.enum(['ok','rejected','timeout']),
+  status: z.enum(['ok', 'rejected', 'timeout']),
   reason: z.string().optional(),
 });
 
 export const Manifest = z.object({
-  driver: z.string(), version: z.string(),
+  driver: z.string(),
+  version: z.string(),
   entities: z.array(EntityDecl),
   commands: z.array(z.object({ action: z.string(), paramsSchema: z.record(z.unknown()) })), // JSON Schema
 });
@@ -179,12 +204,14 @@ bus.announce(manifest);                                    // discovery retained
 Règles communes : un process par driver ; reconnexion backoff exponentiel ; manifeste retained au démarrage ; health LWT ; **zéro logique métier** ; logs JSON structurés (`{ts,level,driver,msg,…}`) sur stdout ; erreurs protocolaires → retry, jamais de crash-loop silencieux.
 
 ### hue-driver (P2)
+
 - Bridge en LAN, API **CLIP v2** : `https://<ip-bridge>/clip/v2/resource/...`, header `hue-application-key`.
 - Obtenir l'application key : POST `/api` avec `{"devicetype":"orion#core"}` dans les 30 s après appui sur le bouton physique du bridge (procédure une fois, key en sops).
 - États temps réel via l'event stream SSE `/eventstream/clip/v2` (pas de polling).
 - Expose : lights (`light`), smart plugs (`plug`).
 
 ### androidtv-driver (P1)
+
 - TV Android TV en LAN, **protocole Android TV Remote v2** (TLS ; remote port 6466, pairing port 6467). Pairing une fois par code affiché à l'écran ; certificat persisté en sops.
 - Lib : `@kud/androidtv-remote` (implémentation TypeScript ; alternative historique : `androidtv-remote` de louis49, utilisée par Home Assistant).
 - Commandes : `power`, `launch_app` (deep link ou nom de package — ex. Netflix), `key` (RemoteKeyCode), `volume`, `send_text`.
@@ -192,11 +219,13 @@ Règles communes : un process par driver ; reconnexion backoff exponentiel ; man
 - Prérequis : veille réseau activée sur la TV, IP fixe. La TV n'est jamais alimentée via une prise pilotée.
 
 ### netatmo-driver (P3)
+
 - Créer une app OAuth2 sur dev.netatmo.com ; scopes thermostat (lecture/écriture) + station. Refresh token **impérativement** rafraîchi et persisté (sops) — un refresh raté = réauthentification manuelle.
 - Respecter les rate limits documentés (polling raisonnable : 5 min météo, 1–2 min thermostat).
 - Thermostat : lecture T° ambiante/consigne/mode, écriture consigne et mode (`climate`, actionneur `thermostat_maison` → chaudière). Station : percepts `temperature`/`humidity`/`weather`.
 
 ### midea-driver (P4) — lire attentivement, contexte critique
+
 - **Matériel** : dongles d'origine conservés (décision ADR-005). Transport LAN « sk103 » via `packages/midea-protocol` = **wrapper typé de la lib npm `node-mideahvac`** (mode `sk103`). On ne réimplémente le protocole que si la lib bloque réellement.
 - **Tokens (P4.0, atelier prioritaire, faisable dès aujourd'hui — la fenêtre se referme)** : Midea ferme progressivement ses API cloud de délivrance de token/key (Meiju et SmartHome déjà fermées, NetHome Plus en sursis). Les appareils déjà configurés continuent en local à vie ; c'est **l'obtention** qui a une date de péremption inconnue. Procédure :
   1. Réserver des IP fixes pour les 3 dongles.
@@ -208,10 +237,12 @@ Règles communes : un process par driver ; reconnexion backoff exponentiel ; man
 - **Plan B matériel documenté** (si fiabilité insuffisante) : remplacer le dongle par un pont série ESP32 (le dongle n'est qu'un pont vers l'UART interne de la clim) — même interface driver, seul le transport change.
 
 ### tempo-driver (P6)
+
 - Source : API RTE (portail data.rte-france.com → créer un compte + une application → OAuth2 client credentials → API « Tempo Like Supply Contract »). Fallback : API opendata publique sans compte.
 - Publie `tempo_jour` (kind `tempo`) : `{couleurJour:'bleu'|'blanc'|'rouge', couleurDemain:…|'inconnue', periode:'HP'|'HC'}`. La couleur du lendemain tombe la veille vers 11 h ; HP = 6 h–22 h.
 
 ### z2m-normalizer (P5)
+
 - Zigbee2MQTT tourne en container, publie sur `zigbee2mqtt/<friendly_name>`.
 - Le normalizer applique une **table de mapping déclarative** (friendly_name + modèle → entityId/kind/room/transformation de payload) vers nos contrats. Capteurs T°/humidité, mmWave (`presence`), ZLinky (`power` : puissance VA + index).
 - **Tout objet Zigbee futur (volets `cover`, bouton/sonnette) = une ligne dans cette table.**
@@ -220,6 +251,7 @@ Règles communes : un process par driver ; reconnexion backoff exponentiel ; man
 
 - **Miroir** (P1) : souscrit `home/#`, état complet en mémoire, accès par sélecteurs.
 - **Journal** (P5) : SQLite append-only (better-sqlite3) :
+
 ```sql
 CREATE TABLE journal (
   id INTEGER PRIMARY KEY, ts TEXT NOT NULL, topic TEXT NOT NULL,
@@ -228,6 +260,7 @@ CREATE TABLE journal (
 );
 CREATE INDEX idx_journal_entity_ts ON journal(entity_id, ts);
 ```
+
 - **Stale** (P5) : seuils par kind (temperature 15 min, presence 5 min, power 2 min, climate 3× le polling) → republication avec `stale:true` + alerte.
 - **API** (P5) : WebSocket + tRPC — `getState(selector)`, requêtes journal (par entité/période).
 - **Serveur MCP** (P7) : tools `get_state(selector)`, `send_command(cmd)` (issuedBy forcé à `agent`), `subscribe(selector)`, `list_capabilities()` (agrégat des manifestes discovery), `query_journal(…)`. **Unique porte d'entrée de l'agent.**
@@ -239,16 +272,17 @@ CREATE INDEX idx_journal_entity_ts ON journal(entity_id, ts);
   - **Fallbacks sûrs** : capteur stale → consigne conservatrice/hors-gel sur la pièce ; driver offline → alerte, aucune action risquée automatique ; jamais d'oscillation (anti-court-cycle : 5 min mini entre deux bascules d'un actionneur).
   - La régulation lit le miroir et émet des `Command` `issuedBy:'core'` — chaque décision est donc tracée dans le journal.
 - Paramètres dans `config/regulation.yaml`, **versionné git — seul fichier modifiable par l'agent** (après validation humaine), jamais le code :
+
 ```yaml
 rooms:
   salon:
-    sensors: [temp_salon]            # fallback auto: clim_salon.indoorTemp
+    sensors: [temp_salon] # fallback auto: clim_salon.indoorTemp
     actuators: { pac: clim_salon, central: thermostat_maison }
     setpoints: { present: 20.5, absent: 17, nuit: 18, hors_gel: 8 }
 hysteresis: 0.4
 energy:
   tempo_rouge: { hp: { pac: forbidden }, hc: { pac: allowed } }
-  preheat_before_red: { start: "02:00", delta: 1.0 }
+  preheat_before_red: { start: '02:00', delta: 1.0 }
 delestage: { max_va: 9000, shed_order: [clim_entree, clim_chambre, clim_salon] }
 ```
 
@@ -294,6 +328,7 @@ Test d'acceptance (P9) : brancher à chaud un `fake-shutter-driver` → il appar
 ## 15. Monorepo & conventions
 
 Repo **privé unique**, pnpm workspaces :
+
 ```
 /
 ├─ CLAUDE.md                  # règles de session (pointe ici) + « Phase en cours »
@@ -309,35 +344,39 @@ Repo **privé unique**, pnpm workspaces :
 ├─ infra/                     # docker-compose.yml (mosquitto, z2m, ha, whisper, piper) + configs
 └─ config/                    # regulation.yaml + secrets sops (*.enc.yaml)
 ```
+
 Stack : TypeScript strict, Node 22, pnpm, vitest, zod, mqtt.js, tRPC, better-sqlite3, eslint+prettier. Pas de framework lourd. Tests : unitaires sur contracts/bus/midea-protocol/regulation (fixtures de trames et de scénarios) ; un fake-broker (aedes) pour les tests d'intégration bus.
 
 ## 16. Phases — une phase = un objectif de session, avec DoD
 
-- **P0 — Socle** *(0 €, dev sur Mac/tour)* : scaffold monorepo ; contracts v1 (+ schémas de value par kind) ; packages/bus ; `infra/docker-compose.yml` avec mosquitto ; CI lint+test ; apps/cli squelette. *DoD : un fake-driver publie un state typé qu'un fake-consumer valide ; `pnpm test` vert ; `pnpm check:p0`.*
-- **P1 — La télé** *(0 €)* : androidtv-driver (pairing TLS, cert en sops, power, launch_app, key, volume, events → percept `media`) ; core miroir minimal ; cli `states`/`cmd`. *DoD : « lance Netflix » fonctionne de bout en bout (TV réveillée + app ouverte) via `home/cmd` — le hello-world du projet.*
-- **P2 — Lumières & prises** *(0 €)* : appairage CLIP v2 (application key) ; hue-driver complet (SSE → state, cmd → ack). Inventorier le bridge → trancher ADR-006 (prises). *DoD : tout ce qui est sur le bridge s'allume/s'éteint via `home/cmd`, ack < 300 ms.*
-- **P3 — Chauffage Netatmo** *(0 €)* : app OAuth Netatmo ; netatmo-driver (thermostat + station). *DoD : consigne changée depuis le bus, visible dans l'app Netatmo ; météo en percepts.*
-- **P4 — Clims Midea** *(0 €)* : **P4.0 atelier tokens — prioritaire et faisable dès aujourd'hui, avant même P0 (la fenêtre cloud se referme, voir §9 midea)** ; puis midea-protocol (wrapper + fixtures) + midea-driver. *DoD : état + consigne sur les 3 unités ; 3 T° intérieures publiées ; tokens archivés en sops.*
-- **P5 — Serveur + percepts** *(~380 €)* : achat/installation N100, migration infra 24/7 ; Z2M + capteurs + ZLinky ; z2m-normalizer ; journal + stale + API tRPC dans le core. *DoD : états live via cli ; journal qui grossit ; alerte stale démontrée (pile retirée).*
-- **P6 — Tempo + régulation** *(0 €)* : tempo-driver ; module régulation complet (thermostats, politique Tempo, préchauffe, délestage, fallbacks, anti-court-cycle) ; `config/regulation.yaml`. *DoD : une semaine d'autonomie sans intervention ; chaque décision relisible dans le journal avec sa cause.*
-- **P7 — MCP + Agent v1** *(API)* : serveur MCP dans le core ; apps/agent (Agent SDK, tools web actifs, market_quote) d'abord en lecture/conseil, puis actions avec confirmation ; planner du matin. *DoD : « pourquoi la clim du salon a tourné cette nuit ? » → réponse exacte sourcée du journal.*
-- **P8 — Voix** *(~200–270 €)* : HA allégé + Wyoming + Voice PE ; pont HA-discovery ; agent branché en conversation agent ; routage, streaming, continue-conversation, annonces ; entraînement du wake word « OK Stellar » (hors DoD). *DoD : minuteur local < 1 s ; conversation multi-tours suivie depuis le salon (micro rouvert sur question) ; annonce du planner au réveil.*
-- **P9 — Prédictif + extensibilité** *(0 €)* : occupation probabiliste depuis le journal ; préconditionnement ; `propose_regulation_change` en flux diff+confirmation ; test fake-shutter (§13). *DoD : gain de confort mesurable sans hausse de conso les jours rouges ; test d'extensibilité vert.*
+- **P0 — Socle** _(0 €, dev sur Mac/tour)_ : scaffold monorepo ; contracts v1 (+ schémas de value par kind) ; packages/bus ; `infra/docker-compose.yml` avec mosquitto ; CI lint+test ; apps/cli squelette. _DoD : un fake-driver publie un state typé qu'un fake-consumer valide ; `pnpm test` vert ; `pnpm check:p0`._
+- **P1 — La télé** _(0 €)_ : androidtv-driver (pairing TLS, cert en sops, power, launch_app, key, volume, events → percept `media`) ; core miroir minimal ; cli `states`/`cmd`. _DoD : « lance Netflix » fonctionne de bout en bout (TV réveillée + app ouverte) via `home/cmd` — le hello-world du projet._
+- **P2 — Lumières & prises** _(0 €)_ : appairage CLIP v2 (application key) ; hue-driver complet (SSE → state, cmd → ack). Inventorier le bridge → trancher ADR-006 (prises). _DoD : tout ce qui est sur le bridge s'allume/s'éteint via `home/cmd`, ack < 300 ms._
+- **P3 — Chauffage Netatmo** _(0 €)_ : app OAuth Netatmo ; netatmo-driver (thermostat + station). _DoD : consigne changée depuis le bus, visible dans l'app Netatmo ; météo en percepts._
+- **P4 — Clims Midea** _(0 €)_ : **P4.0 atelier tokens — prioritaire et faisable dès aujourd'hui, avant même P0 (la fenêtre cloud se referme, voir §9 midea)** ; puis midea-protocol (wrapper + fixtures) + midea-driver. _DoD : état + consigne sur les 3 unités ; 3 T° intérieures publiées ; tokens archivés en sops._
+- **P5 — Serveur + percepts** _(~380 €)_ : achat/installation N100, migration infra 24/7 ; Z2M + capteurs + ZLinky ; z2m-normalizer ; journal + stale + API tRPC dans le core. _DoD : états live via cli ; journal qui grossit ; alerte stale démontrée (pile retirée)._
+- **P6 — Tempo + régulation** _(0 €)_ : tempo-driver ; module régulation complet (thermostats, politique Tempo, préchauffe, délestage, fallbacks, anti-court-cycle) ; `config/regulation.yaml`. _DoD : une semaine d'autonomie sans intervention ; chaque décision relisible dans le journal avec sa cause._
+- **P7 — MCP + Agent v1** _(API)_ : serveur MCP dans le core ; apps/agent (Agent SDK, tools web actifs, market_quote) d'abord en lecture/conseil, puis actions avec confirmation ; planner du matin. _DoD : « pourquoi la clim du salon a tourné cette nuit ? » → réponse exacte sourcée du journal._
+- **P8 — Voix** _(~200–270 €)_ : HA allégé + Wyoming + Voice PE ; pont HA-discovery ; agent branché en conversation agent ; routage, streaming, continue-conversation, annonces ; entraînement du wake word « OK Stellar » (hors DoD). _DoD : minuteur local < 1 s ; conversation multi-tours suivie depuis le salon (micro rouvert sur question) ; annonce du planner au réveil._
+- **P9 — Prédictif + extensibilité** _(0 €)_ : occupation probabiliste depuis le journal ; préconditionnement ; `propose_regulation_change` en flux diff+confirmation ; test fake-shutter (§13). _DoD : gain de confort mesurable sans hausse de conso les jours rouges ; test d'extensibilité vert._
 
 ## 17. Méthode de travail (sessions Claude Code)
 
 - Chaque session commence par : lire `CLAUDE.md` (phase en cours) puis ce document. **Une phase à la fois**, jamais d'anticipation sans demande explicite.
 - Décision structurante → ADR court **avant** le code, format :
+
 ```
 # ADR-00X — Titre
 Date · Statut : proposé | accepté | remplacé
 ## Contexte  ## Décision  ## Conséquences  ## Alternatives écartées
 ```
+
 - Trames/réponses matérielles réelles enregistrées en fixtures (`__fixtures__/`) avant d'implémenter un protocole.
 - Commits conventionnels, petits. Chaque phase se valide par un script `pnpm check:pX` (créé avec la phase).
 - Interdits absolus : logique métier dans un driver ; nom de driver dans core/agent ; dépendance HA/HACS pour la logique ; contrôle agent sur `lock`/sécurité ; secret en clair ; `--dangerously-skip-permissions`.
 
 ### À demander à l'humain (informations manquantes)
+
 1. Puissance souscrite Linky (kVA) — pour le délestage (P6).
 2. Liste complète des pièces + où iront capteurs et satellites.
 3. Inventaire du bridge Hue (la TV est-elle une prise ? — ADR-006).

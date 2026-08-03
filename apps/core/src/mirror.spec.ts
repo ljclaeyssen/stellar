@@ -61,12 +61,14 @@ describe('core mirror', () => {
 
   it('sélectionne par kind + room et garde le dernier état par entité', async () => {
     await driver.publishState(entity('temp_salon', 'temperature', 'salon', 20.1));
-    await driver.publishState(entity('clim_salon', 'climate', 'salon', {
-      power: false,
-      mode: 'heat',
-      targetTemp: 20,
-      fan: 'auto',
-    }));
+    await driver.publishState(
+      entity('clim_salon', 'climate', 'salon', {
+        power: false,
+        mode: 'heat',
+        targetTemp: 20,
+        fan: 'auto',
+      }),
+    );
 
     await waitFor(() => mirror.getState('temp_salon')?.value === 20.1);
     await waitFor(() => mirror.getStates({ room: 'salon' }).length === 2);
@@ -85,7 +87,13 @@ describe('core mirror', () => {
   it('ignore un state invalide', async () => {
     await coreBus.client.publishAsync(
       'home/state/fake/temp_pourri',
-      JSON.stringify({ id: 'temp_pourri', driver: 'fake', kind: 'temperature', value: 'NaN°C', ts: new Date().toISOString() }),
+      JSON.stringify({
+        id: 'temp_pourri',
+        driver: 'fake',
+        kind: 'temperature',
+        value: 'NaN°C',
+        ts: new Date().toISOString(),
+      }),
       { qos: 1 },
     );
     // laisse le temps au message d'arriver puis vérifie qu'il n'est pas entré

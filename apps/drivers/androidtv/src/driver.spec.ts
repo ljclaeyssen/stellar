@@ -106,8 +106,7 @@ describe('androidtv-driver', () => {
     await new Promise<void>((resolve) => {
       const check = (): void => {
         const last = states.at(-1)?.value as MediaValue | undefined;
-        if (last?.volume === 50 && last.currentApp === 'com.netflix.ninja' && last.power)
-          resolve();
+        if (last?.volume === 50 && last.currentApp === 'com.netflix.ninja' && last.power) resolve();
         else setTimeout(check, 20);
       };
       check();
@@ -140,9 +139,7 @@ describe('androidtv-driver', () => {
   });
 
   it('rejette app inconnue, keycode inconnu, action inconnue, mauvaise cible', async () => {
-    expect((await send(cmd('launch_app', { app: 'canal_plus_atlantis' }))).status).toBe(
-      'rejected',
-    );
+    expect((await send(cmd('launch_app', { app: 'canal_plus_atlantis' }))).status).toBe('rejected');
     expect((await send(cmd('key', { key: 'KEYCODE_INEXISTANT' }))).status).toBe('rejected');
     expect((await send(cmd('teleporter', {}))).status).toBe('rejected');
     expect((await send(cmd('power', {}, 'tv_cuisine'))).status).toBe('rejected');

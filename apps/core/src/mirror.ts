@@ -1,11 +1,5 @@
 import type { Bus, Logger } from '@stellar/bus';
-import {
-  Health,
-  Manifest,
-  matchesSelector,
-  type Entity,
-  type Selector,
-} from '@stellar/contracts';
+import { Health, Manifest, matchesSelector, type Entity, type Selector } from '@stellar/contracts';
 
 /**
  * Miroir d'état minimal (P1, spec §10) : souscrit `home/#`, garde le dernier

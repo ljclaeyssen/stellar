@@ -13,7 +13,12 @@ const APP_LINKS: Record<string, string> = {
 
 export function resolveAppLink(app: string): string | undefined {
   if (app.includes('://')) return app;
-  return APP_LINKS[app.trim().toLowerCase().replace(/[\s+-]+/g, '_')];
+  return APP_LINKS[
+    app
+      .trim()
+      .toLowerCase()
+      .replace(/[\s+-]+/g, '_')
+  ];
 }
 
 export function knownApps(): string[] {
