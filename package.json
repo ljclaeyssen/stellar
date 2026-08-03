@@ -14,8 +14,16 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm build && pnpm -r run test",
-    "check:p0": "pnpm build && pnpm lint && pnpm typecheck && pnpm -r run test",
-    "check:p1": "pnpm build && pnpm lint && pnpm typecheck && pnpm -r run test"
+    "check": "pnpm build && pnpm lint && pnpm typecheck && pnpm format:check && pnpm -r run test",
+    "check:p0": "pnpm check",
+    "check:p1": "pnpm check",
+    "secrets:encrypt": "sops -e -i",
+    "secrets:decrypt": "sops -d"
+  },
+  "pnpm": {
+    "overrides": {
+      "protobufjs": "^7.6.5"
+    }
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",

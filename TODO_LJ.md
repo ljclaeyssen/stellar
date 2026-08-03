@@ -1,5 +1,50 @@
 # TODO LJ — actions qui nécessitent l'humain
 
+## 🔴 Sauvegarde du dépôt (priorité haute, 5 min)
+
+Le dépôt n'a **aucun remote** aujourd'hui : tout Stellar tient sur un seul disque.
+Créer un repo git **privé** sur GitHub et pousser — c'est le seul backup du projet.
+
+```bash
+gh repo create stellar --private --source=. --remote=origin --push
+# ou : git remote add origin git@github.com:<toi>/stellar.git && git push -u origin main
+```
+
+Le `.gitignore` est en allowlist sur `config/` : rien n'y est versionné sauf
+`regulation.yaml` et les `*.enc.yaml` / `*.enc.json` chiffrés. Pousser est sûr.
+
+## 🔑 Sops/age — à initialiser (avant l'atelier Midea !)
+
+Sans ça, les tokens Midea récoltés à l'étape suivante n'ont nulle part où aller
+(spec §14 : aucun secret en clair, jamais commité déchiffré).
+
+1. **Installer sops + age**
+   ```bash
+   winget install FiloSottile.age Mozilla.SOPS   # tour Windows
+   brew install sops age                         # MacBook
+   ```
+2. **Générer la clé**
+   ```bash
+   age-keygen -o ~/.config/sops/age/keys.txt
+   ```
+3. **Sauvegarder la clé privée hors ligne** — gestionnaire de mots de passe **+**
+   copie papier. **JAMAIS dans git.** Cette clé perdue = tous les secrets chiffrés
+   du dépôt définitivement illisibles (tokens Midea inclus, et ils ne sont plus
+   réémissibles — voir la section suivante).
+   ⚠️ Les deux machines de dev (Mac + Windows) doivent avoir la clé : soit la même
+   clé recopiée, soit deux clés publiques listées dans `.sops.yaml`.
+4. **Coller la/les clé(s) publique(s)** (`age1...`, affichée par `age-keygen`) dans
+   `.sops.yaml` à la racine, à la place du `# TODO_LJ:`.
+5. **Chiffrer le certificat TV déjà présent** puis supprimer le clair :
+   ```bash
+   sops -e config/androidtv-cert.json > config/androidtv-cert.enc.json
+   rm config/androidtv-cert.json
+   ```
+
+Raccourcis disponibles à la racine (package.json) :
+`pnpm secrets:encrypt <fichier>` (chiffre **en place**, `sops -e -i`) et
+`pnpm secrets:decrypt <fichier>` (déchiffre **sur stdout**, ne touche pas au fichier).
+
 ## ⚠️ P4.0 — Atelier tokens Midea (URGENT, la fenêtre cloud se referme)
 
 Midea ferme progressivement ses API cloud de délivrance token/key (Meiju et SmartHome

@@ -1,0 +1,25 @@
+[Unit]
+Description=Stellar driver Android TV — traducteur Remote v2
+Documentation=file:/opt/stellar/docs/SPEC.md
+After=network-online.target
+Wants=network-online.target
+# Pas de rate-limit de redémarrage : le service doit toujours finir par revenir.
+# (StartLimitIntervalSec vit dans [Unit] depuis systemd 229.)
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=stellar
+WorkingDirectory=/opt/stellar
+# ATV_HOST, ATV_ENTITY_ID, ATV_ROOM, ATV_CERT_FILE, STELLAR_MQTT_URL
+EnvironmentFile=/etc/stellar/stellar-androidtv.env
+ExecStart=/usr/bin/node /opt/stellar/apps/drivers/androidtv/dist/main.js run
+# Le pairing (`… /dist/main.js pair`) est manuel et interactif : jamais dans l'unit.
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=stellar-androidtv
+
+[Install]
+WantedBy=multi-user.target

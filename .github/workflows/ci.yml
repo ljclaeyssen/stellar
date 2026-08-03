@@ -5,17 +5,29 @@ on:
     branches: [main]
   pull_request:
 
+# Aucun job du repo n'écrit sur GitHub : lecture seule par défaut.
+permissions:
+  contents: read
+
+# Une PR qui repousse annule le run précédent.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      # pas de `version:` — pnpm/action-setup lit `packageManager` du package.json
       - uses: pnpm/action-setup@v4
-        with:
-          version: 11
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:p1
+      # l'infra fait partie du contrat de la phase : elle doit au moins parser
+      - name: Valider le compose infra
+        run: docker compose -f infra/docker-compose.yml config -q

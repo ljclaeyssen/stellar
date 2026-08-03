@@ -1,0 +1,29 @@
+name: Audit
+
+# Volontairement séparé de la CI : une advisory publiée un mardi ne doit pas bloquer
+# une PR sans rapport. Ce workflow signale, il n'arbitre pas.
+on:
+  schedule:
+    - cron: '0 7 * * 1' # tous les lundis à 07h00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level=high

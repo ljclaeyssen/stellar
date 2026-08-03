@@ -1,0 +1,5 @@
+# sops — règles de chiffrement des secrets Stellar (spec §14).
+# Seuls les fichiers config/*.enc.yaml|json sont versionnés ; ils sont chiffrés par age.
+creation_rules:
+  - path_regex: config/.*\.enc\.(ya?ml|json)$
+    age: '# TODO_LJ: coller ici la/les clé(s) publique(s) age (age1...) — voir TODO_LJ.md'

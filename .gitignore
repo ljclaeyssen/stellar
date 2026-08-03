@@ -4,18 +4,28 @@ dist/
 coverage/
 *.tsbuildinfo
 
-# env & secrets — seuls les *.enc.yaml (sops) sont versionnés
+# env
 .env
 .env.*
-config/*.dec.yaml
-config/secrets.yaml
-config/androidtv-cert.json
+
+# secrets
+# filets de sécurité (toute profondeur) — placés AVANT l'allowlist : en gitignore
+# la dernière règle qui matche gagne, donc les `!config/*.enc.*` ci-dessous doivent
+# rester en dernier pour qu'un secret *chiffré* (ex. config/midea-tokens.enc.json)
+# ne soit pas ré-ignoré par `**/*token*.json`.
+**/*-cert.json
+**/*token*.json
 *.key
 *.pem
+# tout config/ est exclu sauf l'explicitement chiffré/public
+config/*
+!config/.gitkeep
+!config/*.enc.yaml
+!config/*.enc.json
+!config/regulation.yaml
 
 # runtime
 *.log
-infra/mosquitto/data/
 
 # IDE / OS
 .idea/

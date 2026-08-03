@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # Une seule PR groupée par mois : le monorepo est petit, le bruit coûte plus cher
+  # que la fraîcheur.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      all-deps:
+        patterns: ['*']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']

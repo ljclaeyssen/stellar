@@ -4,12 +4,32 @@ services:
   mosquitto:
     image: eclipse-mosquitto:2
     container_name: stellar-mosquitto
-    restart: unless-stopped
+    # spec §14 : restart=always (survit à un reboot de la machine hôte).
+    restart: always
     ports:
-      - '1883:1883'
+      # Dev (Mac / tour Windows) : loopback seul — le broker n'est joignable que
+      # depuis la machine qui l'héberge. En P5, quand le broker migre sur le N100
+      # et que les drivers/satellites tournent ailleurs sur le LAN, exporter
+      # STELLAR_MQTT_BIND=0.0.0.0 (LAN uniquement, jamais de port ouvert vers l'extérieur).
+      - '${STELLAR_MQTT_BIND:-127.0.0.1}:1883:1883'
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto-data:/mosquitto/data
+    healthcheck:
+      # $$SYS → littéral $SYS après interpolation compose : un broker vivant répond
+      # toujours sur $SYS/broker/uptime.
+      test: ['CMD-SHELL', "mosquitto_sub -h 127.0.0.1 -t '$$SYS/broker/uptime' -C 1 -W 3 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      # spec §14 : logs JSON, docker logs suffit — mais bornés, le broker tourne 24/7.
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    security_opt:
+      - 'no-new-privileges:true'
 
 volumes:
   mosquitto-data:
