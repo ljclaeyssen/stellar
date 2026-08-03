@@ -1,0 +1,57 @@
+{
+  "_note": "Table de mapping Zigbee2MQTT → contrats Stellar (spec §9, §13). Un nouvel objet Zigbee = UNE ligne ici, zéro code. `model` est purement informatif (aide humaine au recalage). Un `field` est soit un nom de champ du payload Z2M, soit { field, scale } quand une unité doit être convertie. Champ absent du payload = entité non publiée pour ce message (les payloads Z2M sont partiels). Fichier versionné : il ne contient aucun secret.",
+  "devices": [
+    {
+      "friendlyName": "temp_salon",
+      "model": "SNZB-02D",
+      "room": "salon",
+      "entities": [
+        { "entityId": "temp_salon", "kind": "temperature", "field": "temperature", "unit": "°C" },
+        { "entityId": "humidity_salon", "kind": "humidity", "field": "humidity", "unit": "%" }
+      ]
+    },
+    {
+      "friendlyName": "temp_entree",
+      "model": "SNZB-02D",
+      "room": "entree",
+      "entities": [
+        { "entityId": "temp_entree", "kind": "temperature", "field": "temperature", "unit": "°C" },
+        { "entityId": "humidity_entree", "kind": "humidity", "field": "humidity", "unit": "%" }
+      ]
+    },
+    {
+      "friendlyName": "temp_chambre",
+      "model": "SNZB-02D",
+      "room": "chambre",
+      "entities": [
+        { "entityId": "temp_chambre", "kind": "temperature", "field": "temperature", "unit": "°C" },
+        { "entityId": "humidity_chambre", "kind": "humidity", "field": "humidity", "unit": "%" }
+      ]
+    },
+    {
+      "friendlyName": "presence_salon",
+      "model": "ZY-M100",
+      "room": "salon",
+      "entities": [{ "entityId": "presence_salon", "kind": "presence", "field": "presence" }]
+    },
+    {
+      "friendlyName": "presence_entree",
+      "model": "ZY-M100",
+      "room": "entree",
+      "entities": [{ "entityId": "presence_entree", "kind": "presence", "field": "presence" }]
+    },
+    {
+      "friendlyName": "zlinky",
+      "model": "ZLinky_TIC",
+      "room": null,
+      "entities": [
+        {
+          "entityId": "power_maison",
+          "kind": "power",
+          "fields": { "va": "apparent_power", "indexBase": "current_summ_delivered" },
+          "unit": "VA"
+        }
+      ]
+    }
+  ]
+}

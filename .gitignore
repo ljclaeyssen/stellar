@@ -23,6 +23,9 @@ config/*
 !config/*.enc.yaml
 !config/*.enc.json
 !config/regulation.yaml
+# table de mapping Zigbee2MQTT : publique par nature (friendly_name → entityId/kind/room),
+# aucun secret — et versionnée, puisque c'est le chemin d'extensibilité de la spec §13.
+!config/z2m-mapping.json
 
 # runtime
 *.log

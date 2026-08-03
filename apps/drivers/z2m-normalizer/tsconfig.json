@@ -1,0 +1,21 @@
+{
+  // Projet de *lint et de typecheck* : il revendique tout `src`, specs comprises.
+  //
+  // Même scission que hue / netatmo / midea (cf. le commentaire de
+  // `eslint.config.js`) : laisser les `*.spec.ts` au projet par défaut de
+  // typescript-eslint ferait sauter le plafond `allowDefaultProject`. Ici
+  // tsconfig.json revendique les specs, tsconfig.build.json se charge seul de
+  // l'émission.
+  //
+  // `types: ["node"]` explicite : ce driver n'importe pas `undici`, dont les types
+  // traînent ceux de Node chez hue/netatmo — sans déclaration, le build (specs
+  // exclues, donc vitest absent) perdrait `node:fs` et `process`.
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src"]
+}
