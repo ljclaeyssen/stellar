@@ -36,11 +36,16 @@ export default tseslint.config(
            * Le plafond a sauté en P2 : `apps/drivers/hue` applique la scission et
            * revendique donc ses propres specs — il ne doit PAS figurer ici (un
            * fichier à la fois dans un projet et dans allowDefaultProject est une
-           * erreur de parsing). D'où le glob nommément limité à androidtv : le
-           * prochain driver fera la scission lui aussi.
+           * erreur de parsing). D'où les globs nommément limités : chaque nouveau
+           * package fait la scission et sort de cette liste.
+           *
+           * P4 : `packages/midea-protocol` et `apps/drivers/midea` scindent eux
+           * aussi, d'où le glob `packages/*` remplacé par la liste des deux seuls
+           * packages qui dépendent encore du projet par défaut.
            */
           allowDefaultProject: [
-            'packages/*/src/*.spec.ts',
+            'packages/bus/src/*.spec.ts',
+            'packages/contracts/src/*.spec.ts',
             'apps/*/src/*.spec.ts',
             'apps/drivers/androidtv/src/*.spec.ts',
           ],

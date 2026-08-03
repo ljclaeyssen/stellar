@@ -1,0 +1,26 @@
+{
+  "_note": "Statut 0x41 (getStatus) d'une unité à l'arrêt : le SK103 continue de rapporter la consigne et la T° intérieure même hors tension — c'est ce qui permet de publier le percept `temperature` d'une pièce dont la clim ne tourne pas. DÉRIVÉ DE LA DOCUMENTATION (README « getStatus »), PAS D'UN ÉCHANGE RÉEL : à recaler à l'atelier P4.0 / au premier `stellar-midea verify` (règle spec §17, docs/TESTING.md §2).",
+  "_source": "node_modules/node-mideahvac/README.md — table des propriétés getStatus",
+  "status": {
+    "powerOn": false,
+    "mode": { "value": 1, "description": "auto" },
+    "temperatureSetpoint": 21,
+    "indoorTemperature": 18.4,
+    "outdoorTemperature": 4.2,
+    "fanSpeed": { "value": 102, "description": "auto" },
+    "temperatureUnit": { "value": 0, "description": "celsius" },
+    "statusCode": { "value": 0, "description": "ok" },
+    "inError": false,
+    "ecoMode": false,
+    "turboMode": false,
+    "sleepMode": false,
+    "frostProtection": false,
+    "updownFan": false,
+    "leftrightFan": false,
+    "light": 0,
+    "onTimer": false,
+    "offTimer": false,
+    "humiditySetpoint": 0,
+    "resume": true
+  }
+}

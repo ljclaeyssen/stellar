@@ -1,0 +1,26 @@
+{
+  "_note": "Statut 0x41 (getStatus) d'une unité en froid, ventilation à 60 % (« medium »), à la forme rendue par lib/reporter.js de node-mideahvac 0.3.3. DÉRIVÉ DE LA DOCUMENTATION (README « getStatus »), PAS D'UN ÉCHANGE RÉEL : à recaler à l'atelier P4.0 / au premier `stellar-midea verify` (règle spec §17, docs/TESTING.md §2).",
+  "_source": "node_modules/node-mideahvac/README.md — table des propriétés getStatus",
+  "status": {
+    "powerOn": true,
+    "mode": { "value": 2, "description": "cool" },
+    "temperatureSetpoint": 24,
+    "indoorTemperature": 27.2,
+    "outdoorTemperature": 33.1,
+    "fanSpeed": { "value": 60, "description": "medium" },
+    "temperatureUnit": { "value": 0, "description": "celsius" },
+    "statusCode": { "value": 0, "description": "ok" },
+    "inError": false,
+    "ecoMode": true,
+    "turboMode": false,
+    "sleepMode": false,
+    "frostProtection": false,
+    "updownFan": true,
+    "leftrightFan": true,
+    "light": 7,
+    "onTimer": false,
+    "offTimer": false,
+    "humiditySetpoint": 0,
+    "resume": false
+  }
+}

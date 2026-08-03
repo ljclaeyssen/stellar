@@ -17,6 +17,10 @@ export default defineConfig({
     // Les suites d'intégration montent un broker aedes : 5 s (défaut) est trop court
     // sur une machine chargée ou en CI.
     testTimeout: 15_000,
+    // En CI uniquement : une seconde chance pour les suites d'intégration
+    // (broker + timers réels sous machines partagées). Le dev local reste
+    // strict — un flake doit se voir et se corriger, pas se masquer.
+    retry: process.env.CI ? 1 : 0,
   },
   resolve: {
     alias: {

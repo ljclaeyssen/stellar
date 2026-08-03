@@ -10,6 +10,25 @@
 
 ---
 
+# P4 — Clims Midea (DoD simulé atteint le 2026-08-03 — atelier tokens P4.0 humain en attente)
+
+- [x] `packages/midea-protocol` : couture typée calée sur node-mideahvac 0.3.3
+      RÉEL (mode/fanSpeed en {value,description} aplatis, asymétrie
+      lecture/écriture des modes, pas d'événements en sk103 → panne détectée aux
+      rejets de getStatus, pas de session persistante), fake appliance publique,
+      mapping status ↔ ClimateValue (102→'auto', 101→'fixed' lisible non
+      écrivable), fixtures
+- [x] `apps/drivers/midea` : 3 unités, polling doux 45 s + jitter ±10 %
+      (désynchronise les dongles), climate + percept temperature par unité,
+      set (resync par le retour de setStatus, anti-martèlement), verify sans
+      secrets, stale ADR-009 en cycles (plancher 2, ≈5 min en prod)
+- [x] 42 tests ; chasse à un flake sous charge parallèle : course légitime
+      commande/poll rendue tolérante dans le spec anti-martèlement, `retry: 1`
+      en CI uniquement (vitest.shared) ; 25 runs complets verts consécutifs
+- [x] `check:p4` ; check racine vert (197 tests)
+
+---
+
 # P3 — Chauffage Netatmo (DoD simulé atteint le 2026-08-03)
 
 - [x] `apps/simulators/netatmo` : OAuth à rotation stricte, Energy + Station,

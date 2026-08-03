@@ -1,0 +1,23 @@
+{
+  // Projet de *lint et de typecheck* : il revendique tout `src`, specs comprises.
+  //
+  // Même scission que `apps/drivers/hue` et `apps/drivers/netatmo` (cf. le
+  // commentaire de `eslint.config.js`) : laisser les `*.spec.ts` au projet par
+  // défaut de typescript-eslint ferait sauter le plafond `allowDefaultProject`
+  // (7 fichiers sur 8 y sont déjà). Ici tsconfig.json revendique les specs,
+  // tsconfig.build.json se charge seul de l'émission.
+  //
+  // `types: ["node"]` explicite : les autres packages héritent des types Node par
+  // accident (leurs sources importent `undici`, dont les types référencent ceux de
+  // Node). Ici les sources n'importent que zod et la lib Midea — sans déclaration,
+  // `tsconfig.build.json`, qui exclut les specs et donc l'import de vitest, perd
+  // `node:fs` et `setTimeout`. D'où le `@types/node` en devDependency.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src"]
+}
