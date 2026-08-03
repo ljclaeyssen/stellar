@@ -1,0 +1,84 @@
+{
+  "body": {
+    "devices": [
+      {
+        "_id": "70:ee:50:aa:bb:cc",
+        "station_name": "Maison",
+        "module_name": "Salon",
+        "type": "NAMain",
+        "firmware": 181,
+        "wifi_status": 45,
+        "co2_calibrating": false,
+        "date_setup": 1600000000,
+        "last_setup": 1600000000,
+        "last_status_store": 1770000000,
+        "last_upgrade": 1600000000,
+        "reachable": true,
+        "place": {
+          "altitude": 30,
+          "city": "Lille",
+          "country": "FR",
+          "timezone": "Europe/Paris",
+          "location": [3.0573, 50.6292]
+        },
+        "data_type": ["Temperature", "CO2", "Humidity", "Noise", "Pressure"],
+        "dashboard_data": {
+          "time_utc": 1770000000,
+          "Temperature": 20.8,
+          "CO2": 638,
+          "Humidity": 47,
+          "Noise": 36,
+          "Pressure": 1014.2,
+          "AbsolutePressure": 1010.6,
+          "min_temp": 19.4,
+          "max_temp": 21.2,
+          "date_min_temp": 1769980000,
+          "date_max_temp": 1769995000,
+          "temp_trend": "stable",
+          "pressure_trend": "down"
+        },
+        "modules": [
+          {
+            "_id": "02:00:00:aa:bb:cc",
+            "module_name": "Extérieur",
+            "type": "NAModule1",
+            "data_type": ["Temperature", "Humidity"],
+            "battery_percent": 74,
+            "battery_vp": 5300,
+            "rf_status": 66,
+            "firmware": 50,
+            "last_message": 1770000000,
+            "last_seen": 1770000000,
+            "last_setup": 1600000000,
+            "reachable": true,
+            "dashboard_data": {
+              "time_utc": 1770000000,
+              "Temperature": 8.3,
+              "Humidity": 82,
+              "min_temp": 7.1,
+              "max_temp": 11.4,
+              "date_min_temp": 1769975000,
+              "date_max_temp": 1769995000,
+              "temp_trend": "down"
+            }
+          }
+        ]
+      }
+    ],
+    "user": {
+      "mail": "humain@example.invalid",
+      "administrative": {
+        "lang": "fr-FR",
+        "reg_locale": "fr-FR",
+        "country": "FR",
+        "unit": 0,
+        "windunit": 0,
+        "pressureunit": 0,
+        "feel_like_algo": 0
+      }
+    }
+  },
+  "status": "ok",
+  "time_exec": 0.088,
+  "time_server": 1770000000
+}

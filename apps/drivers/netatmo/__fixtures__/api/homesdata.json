@@ -1,0 +1,65 @@
+{
+  "body": {
+    "homes": [
+      {
+        "id": "5f8a1b2c3d4e5f6a7b8c9d0e",
+        "name": "Maison",
+        "altitude": 30,
+        "coordinates": [50.6292, 3.0573],
+        "country": "FR",
+        "timezone": "Europe/Paris",
+        "rooms": [
+          {
+            "id": "2745291958",
+            "name": "Maison",
+            "type": "livingroom",
+            "module_ids": ["04:00:00:12:34:56"]
+          }
+        ],
+        "modules": [
+          {
+            "id": "70:ee:50:12:34:56",
+            "type": "NAPlug",
+            "name": "Relais",
+            "setup_date": 1600000000,
+            "modules_bridged": ["04:00:00:12:34:56"]
+          },
+          {
+            "id": "04:00:00:12:34:56",
+            "type": "NATherm1",
+            "name": "Thermostat",
+            "setup_date": 1600000000,
+            "room_id": "2745291958",
+            "bridge": "70:ee:50:12:34:56"
+          }
+        ],
+        "therm_setpoint_default_duration": 180,
+        "therm_mode": "schedule",
+        "schedules": [
+          {
+            "id": "5f8a1b2c3d4e5f6a7b8c9d0f",
+            "name": "Semaine",
+            "default": true,
+            "selected": true,
+            "type": "therm",
+            "away_temp": 12,
+            "hg_temp": 7
+          }
+        ]
+      }
+    ],
+    "user": {
+      "email": "humain@example.invalid",
+      "language": "fr-FR",
+      "locale": "fr-FR",
+      "feel_like_algorithm": 0,
+      "unit_pressure": 0,
+      "unit_system": 0,
+      "unit_wind": 0,
+      "id": "5f8a1b2c3d4e5f6a7b8c9d00"
+    }
+  },
+  "status": "ok",
+  "time_exec": 0.061,
+  "time_server": 1770000000
+}

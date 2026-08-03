@@ -1,0 +1,46 @@
+{
+  "body": {
+    "home": {
+      "id": "5f8a1b2c3d4e5f6a7b8c9d0e",
+      "rooms": [
+        {
+          "id": "2745291958",
+          "reachable": true,
+          "therm_measured_temperature": 19.4,
+          "heating_power_request": 0,
+          "therm_setpoint_temperature": 19,
+          "therm_setpoint_mode": "schedule",
+          "therm_setpoint_start_time": 0,
+          "therm_setpoint_end_time": 0,
+          "anticipating": false,
+          "open_window": false
+        }
+      ],
+      "modules": [
+        {
+          "id": "70:ee:50:12:34:56",
+          "type": "NAPlug",
+          "firmware_revision": 222,
+          "rf_strength": 70,
+          "wifi_strength": 55,
+          "reachable": true
+        },
+        {
+          "id": "04:00:00:12:34:56",
+          "type": "NATherm1",
+          "firmware_revision": 79,
+          "rf_strength": 66,
+          "reachable": true,
+          "battery_state": "full",
+          "battery_level": 3900,
+          "boiler_valve_comfort_boost": false,
+          "boiler_status": false,
+          "bridge": "70:ee:50:12:34:56"
+        }
+      ]
+    }
+  },
+  "status": "ok",
+  "time_exec": 0.049,
+  "time_server": 1770000000
+}
