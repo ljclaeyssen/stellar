@@ -6,7 +6,11 @@ import { z } from 'zod';
  */
 export const DriverConfig = z.object({
   mqttUrl: z.string().default('mqtt://localhost:1883'),
-  tvHost: z.string().min(1, 'ATV_HOST requis (IP fixe de la TV)'),
+  // `required_error` en plus du `min(1)` : sans lui, une variable absente
+  // produit un « Required » qui ne dit pas quoi renseigner.
+  tvHost: z
+    .string({ required_error: 'ATV_HOST requis (IP fixe de la TV)' })
+    .min(1, 'ATV_HOST requis (IP fixe de la TV)'),
   entityId: z.string().default('tv_salon'),
   room: z.string().default('salon'),
   certFile: z.string().default('config/androidtv-cert.json'),

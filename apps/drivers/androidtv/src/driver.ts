@@ -23,6 +23,7 @@ export interface TvRemoteLike {
   sendKey(keyCode: number, direction?: number): void;
   sendAppLink(link: string): void;
   sendText(text: string): void;
+  on(event: 'ready', listener: () => void): unknown;
   on(event: 'powered', listener: (powered: boolean) => void): unknown;
   on(
     event: 'volume',
@@ -31,6 +32,12 @@ export interface TvRemoteLike {
   on(event: 'current_app', listener: (app: string) => void): unknown;
   on(event: 'unpaired', listener: () => void): unknown;
   on(event: 'error', listener: (err: Error) => void): unknown;
+}
+
+/** Ce que le driver expose à son appelant (et aux tests) une fois démarré. */
+export interface AndroidTvDriverHandle {
+  /** Session Remote v2 vivante : vrai entre un `ready` et le prochain `error`/`unpaired`. */
+  readonly connected: boolean;
 }
 
 const PowerParams = z.object({ on: z.boolean().optional() });
@@ -53,6 +60,13 @@ const VOLUME_KEYS: Record<'up' | 'down' | 'mute', string> = {
   down: 'KEYCODE_VOLUME_DOWN',
   mute: 'KEYCODE_VOLUME_MUTE',
 };
+
+/**
+ * La lib avale silencieusement tout envoi sur une session morte (`client?.write`
+ * sur socket détruit) : aucun throw, aucun ack d'erreur. Sans ce garde-fou on
+ * ack `ok` une commande jamais transmise — interdit par l'ADR-009.
+ */
+const UNREACHABLE = 'TV injoignable (session Remote fermée)';
 
 export interface AndroidTvDriverOptions {
   bus: Bus;
@@ -80,49 +94,84 @@ export function buildManifest(entityId: string, room: string): Manifest {
 /**
  * Traducteur pur : événements du protocole Remote v2 → percept `media` retained,
  * commandes du bus → appels remote. Aucune décision ici (spec, interdit n°1).
+ *
+ * Le driver suit la vie de la session TV (`ready` / `error` / `unpaired`) pour
+ * appliquer l'ADR-009 : équipement muet ⇒ entité republiée `stale: true` et
+ * commandes rejetées plutôt qu'acquittées dans le vide. La *reconnexion*, elle,
+ * n'est pas de son ressort (voir `main.ts`).
  */
-export async function startAndroidTvDriver(options: AndroidTvDriverOptions): Promise<void> {
+export async function startAndroidTvDriver(
+  options: AndroidTvDriverOptions,
+): Promise<AndroidTvDriverHandle> {
   const { bus, remote, entityId, room, logger } = options;
 
   const state: MediaValue = { power: false };
+  let connected = false;
+
   const publish = async (): Promise<void> => {
     const entity: Entity = {
       id: entityId,
       driver: DRIVER_NAME,
       kind: 'media',
       room,
-      value: state,
+      value: { ...state },
       ts: new Date().toISOString(),
+      // `stale` dérive de la session : une seule source de vérité (ADR-009).
+      ...(connected ? {} : { stale: true }),
     };
     await bus.publishState(entity);
   };
+  /** Une publication ratée ne doit jamais tuer le driver ni rester silencieuse. */
+  const publishSafe = (): void => {
+    void publish().catch((err) => logger.warn('publication state échouée', { error: String(err) }));
+  };
 
+  /** Perte de session : marquage stale immédiat, une seule fois par transition. */
+  const markDisconnected = (): void => {
+    if (!connected) return;
+    connected = false;
+    publishSafe();
+  };
+
+  remote.on('ready', () => {
+    connected = true;
+    logger.info('session TV établie');
+    // L'entité doit exister sur le bus dès le démarrage, même avant tout
+    // événement `powered` (la TV n'en émet qu'au changement d'état).
+    publishSafe();
+  });
   remote.on('powered', (powered) => {
     state.power = powered;
-    void publish();
+    publishSafe();
   });
   remote.on('current_app', (app) => {
     state.currentApp = app;
-    void publish();
+    publishSafe();
   });
   remote.on('volume', ({ level, maximum, muted }) => {
     state.volume = maximum > 0 ? Math.round((level / maximum) * 100) : 0;
     logger.debug('volume', { volumeLevel: level, maximum, muted });
-    void publish();
+    publishSafe();
   });
   remote.on('unpaired', () => {
-    logger.error('certificat rejeté par la TV — relancer le pairing (stellar-androidtv pair)');
+    // La lib émet `unpaired` sur TOUT ECONNRESET (TV débranchée, reboot), pas
+    // seulement sur révocation du certificat : ce n'est pas une erreur fatale.
+    logger.warn('session TV perdue (unpaired)');
+    markDisconnected();
   });
   remote.on('error', (err) => {
     logger.error('erreur protocole remote', { error: err.message });
+    markDisconnected();
   });
 
-  await bus.onCommand(async (cmd: Command): Promise<Ack> => {
+  await bus.onCommand((cmd: Command): Ack => {
     if (cmd.target !== entityId) {
       return { commandId: cmd.id, status: 'rejected', reason: `entité inconnue: ${cmd.target}` };
     }
     const ok: Ack = { commandId: cmd.id, status: 'ok' };
     const rejected = (reason: string): Ack => ({ commandId: cmd.id, status: 'rejected', reason });
+
+    if (!connected) return rejected(UNREACHABLE);
 
     switch (cmd.action) {
       case 'power': {
@@ -143,7 +192,10 @@ export async function startAndroidTvDriver(options: AndroidTvDriverOptions): Pro
           );
         }
         // DoD P1 : « TV réveillée + app ouverte » — réveil si nécessaire.
-        if (!state.power) remote.sendPower();
+        if (!state.power) {
+          logger.info('réveil de la TV avant lancement', { app: params.data.app });
+          remote.sendPower();
+        }
         remote.sendAppLink(link);
         return ok;
       }
@@ -177,4 +229,10 @@ export async function startAndroidTvDriver(options: AndroidTvDriverOptions): Pro
 
   await bus.announce(buildManifest(entityId, room));
   logger.info('driver androidtv prêt', { entityId, room });
+
+  return {
+    get connected() {
+      return connected;
+    },
+  };
 }
