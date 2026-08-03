@@ -66,6 +66,16 @@ maison (spec §9 midea-driver) :
 4. Me donner les résultats en session → j'archive le tout chiffré (sops/age) dans
    `config/` — c'est l'assurance-vie du parc de clims.
 
+## P2 — Lumières & prises (pour valider le DoD matériel)
+
+- Récupérer l'IP du bridge Hue (app Hue → paramètres → bridge) et lui réserver un
+  bail DHCP statique.
+- `HUE_BRIDGE_URL=https://<ip> stellar-hue pair` puis appuyer sur le bouton du
+  bridge (fenêtre de 60 s) — la clé est persistée, à chiffrer sops ensuite.
+- `stellar-hue verify` : inventaire lecture seule → fixtures réelles enregistrées,
+  et réponse à l'ADR-006 (la TV est-elle branchée sur une prise connectée ?).
+- Puis `stellar-hue run` et le DoD : `stellar cmd hue <entité> set '{"on":true}'`.
+
 ## P1 — La télé (pour valider le DoD)
 
 - Activer la **veille réseau** sur la TV Android TV (ne jamais la couper par une prise).

@@ -1,3 +1,34 @@
+# Audit croisé 2026-08-03 (2 Fable + 2 Opus) — soldé
+
+- 4 angles : conformité spec, bugs/robustesse, qualité/tests/DX, sécu/ops.
+  Rapports condensés dans le scratchpad de session ; corrections en 2 vagues
+  (commits 992f9ea → 27d5e4d). Tout le « top 5 » de chaque rapport est traité.
+- Reste ouvert (assumé) : sonde de vivacité TV pour le cas EHOSTDOWN sans signal
+  (à revoir en P5 avec la détection stale du core) ; suite de tests MQTT 5
+  properties contre mosquitto réel (prévue au banc d'essai, ADR-010) ; auth/ACL
+  mosquitto à trancher en P5 (note dans mosquitto.conf).
+
+---
+
+# P2 — Lumières & prises (en cours, mode simulé — ADR-010)
+
+DoD simulé : inventaire sim-hue publié en entités retained conformes ; `set {on}`
+→ ack < 300 ms mesuré + state mis à jour via SSE ; pairing simulé ; verify.
+DoD matériel (bridge réel) : checklist dans TODO_LJ.md.
+
+## Todo
+
+- [ ] `apps/simulators/hue` (@stellar/sim-hue) : CLIP v2 simulé (light/device/room,
+      PUT + event SSE, pairing link button), lançable seul, état par défaut 3 lights
+      dont 1 prise
+- [ ] `apps/drivers/hue` : couture HueApiLike (REST + SSE + reconnexion), mapping
+      inventaire → entités (light_<room>_<nom> / plug_<nom>), driver (SSE → state,
+      cmd set → PUT → ack), pair, verify (fixtures réelles jour J), main run/pair/verify
+- [ ] Tests niveau 2 contre le simulateur (ack < 300 ms, stale ADR-009, resync)
+- [ ] check racine vert + commits
+
+---
+
 # P1 — La télé
 
 Plan (spec §16 + §9 androidtv-driver). DoD : « lance Netflix » de bout en bout via

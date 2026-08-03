@@ -4,7 +4,8 @@ Domotique homemade pilotée par agent. **Lis `docs/SPEC.md` en intégralité ava
 
 ## État courant
 
-- Phase en cours : **P1 — La télé** (P0 validée le 2026-08-02)
+- Phase en cours : **P2 — Lumières & prises** (P0 validée le 2026-08-02 ; P1 validée en simulé le 2026-08-03 — DoD matériel en attente, voir TODO_LJ.md)
+- Mode de travail (demande humaine du 2026-08-03) : enchaîner toutes les phases en s'appuyant sur les simulateurs (`docs/TESTING.md`, ADR-010) ; chaque DoD matériel est remplacé par un DoD simulé + une checklist de branchement dans TODO_LJ.md.
 - (Mettre à jour cette ligne à chaque phase validée.)
 
 ## Règles de travail
