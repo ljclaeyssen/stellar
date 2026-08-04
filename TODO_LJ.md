@@ -123,6 +123,15 @@ ne jamais régénérer un token depuis le portail pendant que le driver tourne
 - Relire `config/regulation.yaml` (consignes par pièce, plage nuit, ordre de
   délestage) — ce sont TES réglages de confort, j'ai mis des valeurs plausibles.
 
+## P7 — Agent (pour les runs réels)
+
+- Clé API Anthropic dans l'env du service agent (`ANTHROPIC_API_KEY`, sops) —
+  budget loggé par jour, sessions éphémères.
+- Choisir la source de l'agenda du planner du matin (Google Calendar ? autre ?)
+  — question ouverte de la spec §17.
+- Choisir le fournisseur de cours de bourse pour `market_quote` (le tool est
+  prêt avec un provider pluggable + fake).
+
 ## P1 — La télé (pour valider le DoD)
 
 - Activer la **veille réseau** sur la TV Android TV (ne jamais la couper par une prise).
