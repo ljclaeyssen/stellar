@@ -12,6 +12,8 @@ import {
   type TempoValue,
 } from '@stellar/contracts';
 import { createMirror, type Mirror } from '../mirror.js';
+import type { JournalQuery, JournalRow } from '../journal.js';
+import type { OccupancyJournal } from '../predictive/index.js';
 import { loadRegulationConfig, type RegulationConfig } from './regulation-config.js';
 import {
   createRegulation,
@@ -74,6 +76,7 @@ interface FakeAppliance {
 interface Fixtures {
   seedClimate(id: string, room: string, seed: ClimateSeed): Promise<void>;
   seedTemperature(id: string, room: string, celsius: number): Promise<void>;
+  seedPresence(id: string, room: string, seen: boolean, ts?: number): Promise<void>;
   seedTempo(
     couleurJour: TempoValue['couleurJour'],
     couleurDemain: TempoValue['couleurDemain'],
@@ -115,6 +118,8 @@ interface WorldOptions {
   triggerDebounceMs: number;
   /** État du monde AVANT le montage de la régulation (aucun tour parasite). */
   seed?: (fixtures: Fixtures) => Promise<void>;
+  /** P9 : source du profil d'occupation. Absent = pas de préconditionnement. */
+  journal?: OccupancyJournal;
 }
 
 async function startWorld(options: WorldOptions): Promise<World> {
@@ -233,6 +238,18 @@ async function startWorld(options: WorldOptions): Promise<World> {
       await vi.waitFor(() => expect(mirror.getState(id)?.value).toBe(celsius));
     },
 
+    async seedPresence(id, room, seen, ts) {
+      await perceptBus.publishState({
+        id,
+        driver: PERCEPT_DRIVER,
+        kind: 'presence',
+        room,
+        value: seen,
+        ts: ts === undefined ? at() : new Date(ts).toISOString(),
+      });
+      await vi.waitFor(() => expect(mirror.getState(id)?.value).toBe(seen));
+    },
+
     async seedTempo(couleurJour, couleurDemain, periode) {
       await perceptBus.publishState({
         id: TEMPO_ID,
@@ -275,6 +292,7 @@ async function startWorld(options: WorldOptions): Promise<World> {
     triggerDebounceMs: options.triggerDebounceMs,
     // Le faux driver répond immédiatement : un timeout ici serait une panne du test.
     commandTimeoutMs: 2_000,
+    ...(options.journal !== undefined ? { journal: options.journal } : {}),
   });
 
   return {
@@ -651,5 +669,129 @@ describe('runtime — ack `rejected` : la décision est publiée, le tour ne cas
     await world.regulation.evaluate();
     expect(world.commands).toHaveLength(2);
     expect(world.commands[1]?.params).toEqual({ power: true, mode: 'heat', targetTemp: 20.5 });
+  });
+});
+
+// ─────────────────── P9 : préconditionnement branché sur le journal ───────────────────
+
+/** 2026-01-15 17:45 heure locale (Europe/Paris) — un jeudi, 45 min avant 18:30. */
+const JANVIER_15_17H45 = Date.UTC(2026, 0, 15, 16, 45);
+const JANVIER_15_MINUIT = Date.UTC(2026, 0, 14, 23, 0);
+
+/** Journal espion : quatre semaines de mmWave, et un compteur de lectures. */
+function journalEspion(): OccupancyJournal & { readonly calls: JournalQuery[] } {
+  const rows: JournalRow[] = [];
+  let id = 0;
+  for (let day = 1; day <= 28; day += 1) {
+    const midnight = JANVIER_15_MINUIT - day * 86_400_000;
+    for (let slot = 0; slot < 48; slot += 1) {
+      const ts = new Date(midnight + slot * 1_800_000).toISOString();
+      id += 1;
+      rows.push({
+        id,
+        ts,
+        topic: `home/state/${PERCEPT_DRIVER}/presence_salon`,
+        driver: PERCEPT_DRIVER,
+        entityId: 'presence_salon',
+        kind: 'presence',
+        payload: JSON.stringify({
+          id: 'presence_salon',
+          driver: PERCEPT_DRIVER,
+          kind: 'presence',
+          room: 'salon',
+          // Le salon se remplit tous les soirs à 18:30 et se vide à 23:00.
+          value: slot >= 37 && slot < 46,
+          ts,
+        }),
+        issuedBy: null,
+      });
+    }
+  }
+  const calls: JournalQuery[] = [];
+  return {
+    calls,
+    query(query = {}) {
+      calls.push(query);
+      return rows;
+    },
+  };
+}
+
+describe('runtime — préconditionnement : profil relu une fois par heure, préchauffe douce', () => {
+  let world: World;
+  let journal: ReturnType<typeof journalEspion>;
+
+  beforeAll(async () => {
+    journal = journalEspion();
+    world = await startWorld({
+      start: JANVIER_15_17H45,
+      journal,
+      tune: (config) => {
+        salonSeul(config);
+        config.preconditioning = {
+          enabled: true,
+          lookahead_min: 45,
+          threshold: 0.6,
+          max_delta: 1,
+        };
+      },
+      triggerDebounceMs: NEVER,
+      seed: async (fixtures) => {
+        await fixtures.seedClimate('clim_salon', 'salon', { power: false, targetTemp: 17 });
+        await fixtures.seedClimate('thermostat_maison', 'salon', { power: true, targetTemp: 8 });
+        await fixtures.seedTempo('bleu', 'bleu', 'HP');
+        // Parti depuis trois heures : la pièce est franchement `absent`.
+        await fixtures.seedPresence(
+          'presence_salon',
+          'salon',
+          false,
+          JANVIER_15_17H45 - 3 * 3_600_000,
+        );
+        // 17.2 °C : dans la bande de la consigne « absent » (17 ± 0.4), sous celle
+        // du préconditionnement (18 ± 0.4). Toute la différence est là.
+        await fixtures.seedTemperature('temp_salon', 'salon', 17.2);
+      },
+    });
+  });
+
+  afterAll(async () => {
+    await world.close();
+  });
+
+  it('préchauffe à 18 °C en citant l’occupation probable', async () => {
+    await world.regulation.evaluate();
+
+    expect(journal.calls).toHaveLength(1);
+    expect(journal.calls[0]).toMatchObject({ kind: 'presence', order: 'desc' });
+    expect(world.regulation.occupancyProfile?.rooms['salon']).toBeDefined();
+
+    expect(world.commands).toHaveLength(1);
+    expect(world.commands[0]?.params).toEqual({ power: true, mode: 'heat', targetTemp: 18 });
+
+    const [marche] = await awaitDecisions(world, 'pac_marche', 1);
+    expect(marche?.cause).toContain('préconditionnement');
+    expect(marche?.cause).toContain('occupation probable à 18:30');
+  });
+
+  it('ne relit pas le journal aux tours suivants de la même heure', async () => {
+    await world.awaitClimate('clim_salon', { power: true, targetTemp: 18 });
+
+    for (const minutes of [10, 10, 10, 20]) {
+      world.advanceMin(minutes);
+      await world.regulation.evaluate();
+    }
+
+    // 17:45 → 18:35 : cinquante minutes, quatre tours, toujours une seule lecture.
+    expect(journal.calls).toHaveLength(1);
+    // Et rien de neuf n'a été commandé : la consigne était déjà la bonne.
+    expect(world.commands).toHaveLength(1);
+  });
+
+  it('relit le journal une fois l’heure écoulée', async () => {
+    world.advanceMin(20);
+    await world.regulation.evaluate();
+
+    expect(journal.calls).toHaveLength(2);
+    expect(world.regulation.occupancyProfile).toBeDefined();
   });
 });

@@ -1,4 +1,5 @@
 import type { ClimateMode, TempoValue } from '@stellar/contracts';
+import type { OccupancyProfile } from '../predictive/occupancy.js';
 import type { LocalTime } from './time.js';
 
 /**
@@ -73,6 +74,12 @@ export interface Snapshot {
   rooms: RoomSnapshot[];
   tempo?: TempoSnapshot;
   power?: PowerSnapshot;
+  /**
+   * Profil d'occupation (P9) — construit par le runtime depuis le journal, au
+   * plus une fois par heure. Absent = pas de préconditionnement, tout simplement.
+   * Il entre par le snapshot comme le reste : `decide` ne lit jamais rien.
+   */
+  occupancy?: OccupancyProfile;
   /** Actionneurs actuellement délestés. */
   shed: readonly string[];
   /** Clés d'alertes déjà signalées — évite de crier à chaque tick. */
@@ -135,6 +142,8 @@ export interface RoomEvaluation {
   mode: OccupancyMode;
   setpoint: number;
   preheat: boolean;
+  /** Présent quand le préconditionnement (P9) a relevé la consigne. */
+  precondition?: { probability: number; horizon: string };
   /** Actionneur retenu pour chauffer, `undefined` si aucun n'est disponible. */
   chosen?: ActuatorRole;
   decisions: Decision[];

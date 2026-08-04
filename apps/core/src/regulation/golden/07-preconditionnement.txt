@@ -1,0 +1,202 @@
+# scénario : préconditionnement prédictif : la préchauffe douce et ses trois interdits
+# Le salon est vide, mais quatre semaines de journal disent qu'il se remplit à
+# 18:30. Trois actes, trois journées, le MÊME profil (relisible ci-dessous) :
+#   I  — jour bleu : à 17:45 l'horizon tombe sur 18:30, la consigne « absent »
+#        monte de 17 à 18 °C et la PAC démarre. À 18:30 quelqu’un arrive
+#        vraiment : le fait remplace la prédiction, consigne 20,5 °C.
+#   II — MÊME heure, MÊME profil, mais jour rouge en heures pleines : refus
+#        tracé, consigne inchangée à 17 °C. C’est le « sans hausse de conso les
+#        jours rouges » du DoD P9, pris sur le fait.
+#   III— nuit rouge→rouge, heures creuses : la préchauffe Tempo (+1 °C) est
+#        déjà active. Le préconditionnement se retire — pas de cumul de deltas.
+# Config resserrée pour l’occasion : une seule pièce (le sujet est la règle, pas
+# la maison), et une plage nuit 23:00→03:00 sans quoi l’acte III se jouerait en
+# mode `nuit`, qui a sa propre consigne et ne se préconditionne jamais.
+# config : hystérésis 0.4 °C · nuit 23:00→03:00 ·
+#          anti-court-cycle 5 min · présence 30 min ·
+#          délestage 9000/1000/7000 VA []
+#          préchauffe dès 02:00 (+1 °C)
+#          préconditionnement : horizon 45 min · seuil 0.6 · max +1.0 °C
+# pas de 15 min · 12 pas · fuseau Europe/Paris
+
+# profil d'occupation · fenêtre 2025-12-18T16:00:00.000Z → 2026-01-15T16:00:00.000Z (28 j, Europe/Paris)
+# créneaux de 30 min · lissage de Laplace α=1 · seuil 8 jours observés
+# 1310 percepts retenus · 20 jours de semaine, 8 de week-end
+# « p (n/N) » : n jours occupés sur N jours observés · « — » : sous le seuil, probabilité non rendue
+#
+# salon
+#   créneau  semaine        weekend
+#   00:00    0.05 (0/19)    0.10 (0/8)
+#   00:30    0.05 (0/19)    0.10 (0/8)
+#   01:00    0.05 (0/19)    0.10 (0/8)
+#   01:30    0.05 (0/19)    0.10 (0/8)
+#   02:00    0.05 (0/19)    0.10 (0/8)
+#   02:30    0.05 (0/19)    0.10 (0/8)
+#   03:00    0.05 (0/19)    0.10 (0/8)
+#   03:30    0.05 (0/19)    0.10 (0/8)
+#   04:00    0.05 (0/19)    0.10 (0/8)
+#   04:30    0.05 (0/19)    0.10 (0/8)
+#   05:00    0.95 (19/19)   0.10 (0/8)
+#   05:30    0.95 (19/19)   0.10 (0/8)
+#   06:00    0.95 (19/19)   0.10 (0/8)
+#   06:30    0.95 (19/19)   0.10 (0/8)
+#   07:00    0.05 (0/19)    0.10 (0/8)
+#   07:30    0.05 (0/19)    0.10 (0/8)
+#   08:00    0.05 (0/19)    0.10 (0/8)
+#   08:30    0.05 (0/19)    0.10 (0/8)
+#   09:00    0.05 (0/19)    0.10 (0/8)
+#   09:30    0.05 (0/19)    0.10 (0/8)
+#   10:00    0.05 (0/19)    0.10 (0/8)
+#   10:30    0.05 (0/19)    0.10 (0/8)
+#   11:00    0.05 (0/19)    0.90 (8/8)
+#   11:30    0.05 (0/19)    0.90 (8/8)
+#   12:00    0.05 (0/19)    0.90 (8/8)
+#   12:30    0.05 (0/19)    0.90 (8/8)
+#   13:00    0.05 (0/19)    0.90 (8/8)
+#   13:30    0.05 (0/19)    0.90 (8/8)
+#   14:00    0.05 (0/19)    0.90 (8/8)
+#   14:30    0.05 (0/19)    0.90 (8/8)
+#   15:00    0.05 (0/19)    0.90 (8/8)
+#   15:30    0.05 (0/19)    0.90 (8/8)
+#   16:00    0.05 (0/19)    0.90 (8/8)
+#   16:30    0.05 (0/19)    0.90 (8/8)
+#   17:00    0.05 (0/20)    0.90 (8/8)
+#   17:30    0.05 (0/20)    0.90 (8/8)
+#   18:00    0.05 (0/20)    0.90 (8/8)
+#   18:30    0.95 (20/20)   0.90 (8/8)
+#   19:00    0.95 (20/20)   0.90 (8/8)
+#   19:30    0.95 (20/20)   0.90 (8/8)
+#   20:00    0.95 (20/20)   0.90 (8/8)
+#   20:30    0.95 (20/20)   0.90 (8/8)
+#   21:00    0.95 (20/20)   0.90 (8/8)
+#   21:30    0.95 (20/20)   0.90 (8/8)
+#   22:00    0.95 (20/20)   0.90 (8/8)
+#   22:30    0.95 (20/20)   0.90 (8/8)
+#   23:00    0.05 (0/20)    0.10 (0/8)
+#   23:30    0.05 (0/20)    0.10 (0/8)
+
+════════ acte I — jour bleu : la préchauffe a lieu
+         pas de 15 min · 12 pas
+
+2026-01-15 17:00 (jeu) · couleur bleu→bleu · HP · 1200 VA
+  salon     17.2 °C (temp_salon) · absent · consigne 17.0 · pac
+
+2026-01-15 17:15 (jeu) · couleur bleu→bleu · HP · 1200 VA
+  salon     17.2 °C (temp_salon) · absent · consigne 17.0 · pac
+
+2026-01-15 17:30 (jeu) · couleur bleu→bleu · HP · 1200 VA
+  salon     17.2 °C (temp_salon) · absent · consigne 17.0 · pac
+
+2026-01-15 17:45 (jeu) · couleur bleu→bleu · HP · 1200 VA
+  salon     17.2 °C (temp_salon) · absent · consigne 18.0 (préconditionnement p=0.95 → 18:30) · pac
+    → salon/pac_marche : 17.2 °C < 17.6 °C (consigne 18.0 ± 0.4 (mode absent, préconditionnement)) · jour bleu HP · préconditionnement : occupation probable à 18:30 (p=0.95) → consigne 18.0 °C au lieu de 17.0 °C → marche de clim_salon
+      cmd clim_salon set {"power":true,"mode":"heat","targetTemp":18}
+
+2026-01-15 18:00 (jeu) · couleur bleu→bleu · HP · 1200 VA
+  salon     17.5 °C (temp_salon) · absent · consigne 18.0 (préconditionnement p=0.95 → 18:45) · pac
+
+2026-01-15 18:15 (jeu) · couleur bleu→bleu · HP · 1200 VA
+  salon     17.9 °C (temp_salon) · absent · consigne 18.0 (préconditionnement p=0.95 → 19:00) · pac
+
+>>> retour à la maison : la prédiction est confirmée par le capteur
+2026-01-15 18:30 (jeu) · couleur bleu→bleu · HP · 1200 VA
+  salon     18.2 °C (temp_salon) · present · consigne 20.5 · pac
+    → salon/pac_consigne : 18.2 °C dans la bande, consigne 20.5 ± 0.4 (mode present) · jour bleu HP → consigne 20.5 °C sur clim_salon
+      cmd clim_salon set {"mode":"heat","targetTemp":20.5}
+
+2026-01-15 18:45 (jeu) · couleur bleu→bleu · HP · 1200 VA
+  salon     18.7 °C (temp_salon) · present · consigne 20.5 · pac
+
+2026-01-15 19:00 (jeu) · couleur bleu→bleu · HP · 1200 VA
+  salon     19.2 °C (temp_salon) · present · consigne 20.5 · pac
+
+2026-01-15 19:15 (jeu) · couleur bleu→bleu · HP · 1200 VA
+  salon     19.6 °C (temp_salon) · present · consigne 20.5 · pac
+
+2026-01-15 19:30 (jeu) · couleur bleu→bleu · HP · 1200 VA
+  salon     19.9 °C (temp_salon) · present · consigne 20.5 · pac
+
+2026-01-15 19:45 (jeu) · couleur bleu→bleu · HP · 1200 VA
+  salon     20.1 °C (temp_salon) · present · consigne 20.5 · pac
+
+════════ acte II — MÊME profil, MÊME heure, jour rouge en heures pleines : aucune préchauffe
+         pas de 15 min · 12 pas
+
+2026-01-15 17:00 (jeu) · couleur rouge→inconnue · HP · 1200 VA
+  salon     17.2 °C (temp_salon) · absent · consigne 17.0 · central
+    → salon/central_consigne : 17.2 °C, consigne 17.0 ± 0.4 (mode absent) · jour rouge HP (PAC interdite) → consigne 17.0 °C au chauffage central
+      cmd thermostat_maison set {"targetTemp":17}
+
+2026-01-15 17:15 (jeu) · couleur rouge→inconnue · HP · 1200 VA
+  salon     17.2 °C (temp_salon) · absent · consigne 17.0 · central
+
+2026-01-15 17:30 (jeu) · couleur rouge→inconnue · HP · 1200 VA
+  salon     17.1 °C (temp_salon) · absent · consigne 17.0 · central
+
+2026-01-15 17:45 (jeu) · couleur rouge→inconnue · HP · 1200 VA
+  salon     17.1 °C (temp_salon) · absent · consigne 17.0 · central
+    · salon/preconditionnement_refuse : occupation probable à 18:30 (p=0.95), mais préconditionnement refusé : jour rouge en heures pleines — aucune hausse de consigne
+
+2026-01-15 18:00 (jeu) · couleur rouge→inconnue · HP · 1200 VA
+  salon     17.2 °C (temp_salon) · absent · consigne 17.0 · central
+    · salon/preconditionnement_refuse : occupation probable à 18:45 (p=0.95), mais préconditionnement refusé : jour rouge en heures pleines — aucune hausse de consigne
+
+2026-01-15 18:15 (jeu) · couleur rouge→inconnue · HP · 1200 VA
+  salon     17.3 °C (temp_salon) · absent · consigne 17.0 · central
+    · salon/preconditionnement_refuse : occupation probable à 19:00 (p=0.95), mais préconditionnement refusé : jour rouge en heures pleines — aucune hausse de consigne
+
+>>> retour à la maison (la chaudière prend le relais, pas la PAC)
+2026-01-15 18:30 (jeu) · couleur rouge→inconnue · HP · 1200 VA
+  salon     17.5 °C (temp_salon) · present · consigne 20.5 · central
+    → salon/central_consigne : 17.5 °C, consigne 20.5 ± 0.4 (mode present) · jour rouge HP (PAC interdite) → consigne 20.5 °C au chauffage central
+      cmd thermostat_maison set {"targetTemp":20.5}
+
+2026-01-15 18:45 (jeu) · couleur rouge→inconnue · HP · 1200 VA
+  salon     17.8 °C (temp_salon) · present · consigne 20.5 · central
+
+2026-01-15 19:00 (jeu) · couleur rouge→inconnue · HP · 1200 VA
+  salon     18.2 °C (temp_salon) · present · consigne 20.5 · central
+
+2026-01-15 19:15 (jeu) · couleur rouge→inconnue · HP · 1200 VA
+  salon     18.6 °C (temp_salon) · present · consigne 20.5 · central
+
+2026-01-15 19:30 (jeu) · couleur rouge→inconnue · HP · 1200 VA
+  salon     19.0 °C (temp_salon) · present · consigne 20.5 · central
+
+2026-01-15 19:45 (jeu) · couleur rouge→inconnue · HP · 1200 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · central
+
+════════ acte III — nuit rouge en heures creuses : la préchauffe Tempo tient déjà le delta
+         pas de 15 min · 8 pas
+
+2026-01-16 03:30 (ven) · couleur rouge→rouge · HC · 900 VA
+  salon     17.5 °C (temp_salon) · absent · consigne 18.0 (préchauffe) · pac
+    → salon/pac_marche : 17.5 °C < 17.6 °C (consigne 18.0 ± 0.4 (mode absent, préchauffe)) · jour rouge HC (PAC autorisée en heures creuses) · demain rouge, préchauffe +1.0 °C → marche de clim_salon
+      cmd clim_salon set {"power":true,"mode":"heat","targetTemp":18}
+
+2026-01-16 03:45 (ven) · couleur rouge→rouge · HC · 900 VA
+  salon     17.6 °C (temp_salon) · absent · consigne 18.0 (préchauffe) · pac
+
+2026-01-16 04:00 (ven) · couleur rouge→rouge · HC · 900 VA
+  salon     17.8 °C (temp_salon) · absent · consigne 18.0 (préchauffe) · pac
+
+2026-01-16 04:15 (ven) · couleur rouge→rouge · HC · 900 VA
+  salon     18.0 °C (temp_salon) · absent · consigne 18.0 (préchauffe) · pac
+    · salon/preconditionnement_refuse : occupation probable à 05:00 (p=0.95), mais préconditionnement refusé : préchauffe Tempo déjà active (+1.0 °C), pas de cumul de deltas
+
+2026-01-16 04:30 (ven) · couleur rouge→rouge · HC · 900 VA
+  salon     18.2 °C (temp_salon) · absent · consigne 18.0 (préchauffe) · pac
+    · salon/preconditionnement_refuse : occupation probable à 05:15 (p=0.95), mais préconditionnement refusé : préchauffe Tempo déjà active (+1.0 °C), pas de cumul de deltas
+
+2026-01-16 04:45 (ven) · couleur rouge→rouge · HC · 900 VA
+  salon     18.4 °C (temp_salon) · absent · consigne 18.0 (préchauffe) · pac
+    · salon/preconditionnement_refuse : occupation probable à 05:30 (p=0.95), mais préconditionnement refusé : préchauffe Tempo déjà active (+1.0 °C), pas de cumul de deltas
+
+>>> lever : le poste du matin commence, le capteur voit du monde
+2026-01-16 05:00 (ven) · couleur rouge→rouge · HC · 900 VA
+  salon     18.6 °C (temp_salon) · present · consigne 21.5 (préchauffe) · pac
+    → salon/pac_consigne : 18.6 °C dans la bande, consigne 21.5 ± 0.4 (mode present, préchauffe) · jour rouge HC (PAC autorisée en heures creuses) · demain rouge, préchauffe +1.0 °C → consigne 21.5 °C sur clim_salon
+      cmd clim_salon set {"mode":"heat","targetTemp":21.5}
+
+2026-01-16 05:15 (ven) · couleur rouge→rouge · HC · 900 VA
+  salon     19.0 °C (temp_salon) · present · consigne 21.5 (préchauffe) · pac

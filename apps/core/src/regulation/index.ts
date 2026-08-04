@@ -1,9 +1,15 @@
 export { decide } from './decide.js';
 export {
+  evaluatePreconditioning,
+  type PreconditioningInput,
+  type PreconditioningOutcome,
+} from './precondition.js';
+export {
   loadRegulationConfig,
   parseRegulationConfig,
   parseRegulationYaml,
   RegulationConfigSchema,
+  type PreconditioningConfig,
   type RegulationConfig,
   type RoomConfig,
   type Setpoints,

@@ -3,6 +3,11 @@ import type { Bus, Logger } from '@stellar/bus';
 import type { Command, Kind } from '@stellar/contracts';
 import { Kind as KindEnum } from '@stellar/contracts';
 import type { Mirror } from '../mirror.js';
+import {
+  createOccupancyProfileCache,
+  type OccupancyJournal,
+  type OccupancyProfile,
+} from '../predictive/index.js';
 import { decide } from './decide.js';
 import type { RegulationConfig } from './regulation-config.js';
 import { buildSnapshot } from './snapshot.js';
@@ -65,6 +70,18 @@ export interface RegulationOptions {
   triggerDebounceMs?: number;
   /** Timeout des commandes émises. Défaut 5 s (celui du bus). */
   commandTimeoutMs?: number;
+  /**
+   * Journal (P9) : source du profil d'occupation du préconditionnement. Absent ⇒
+   * pas de profil, donc pas de préconditionnement — la régulation reste celle de
+   * la P6. Il n'est même pas lu tant que `preconditioning.enabled` est faux.
+   */
+  journal?: OccupancyJournal;
+  /** Âge maximal du profil d'occupation. Défaut 1 h. */
+  occupancyRefreshMs?: number;
+  /** Profondeur de la fenêtre glissante du profil. Défaut 28 jours. */
+  occupancyWindowDays?: number;
+  /** Jours observés minimum par créneau. Défaut 8. */
+  occupancyMinObservations?: number;
 }
 
 export interface Regulation {
@@ -72,6 +89,12 @@ export interface Regulation {
   evaluate(): Promise<Outcome>;
   /** Dernier résultat calculé (introspection, tests). */
   readonly lastOutcome: Outcome | undefined;
+  /**
+   * Dernier profil d'occupation utilisé (P9), `undefined` quand le
+   * préconditionnement est éteint. `formatProfile` le rend lisible — c'est le
+   * « mesurable » du DoD P9.
+   */
+  readonly occupancyProfile: OccupancyProfile | undefined;
   close(): void;
 }
 
@@ -85,6 +108,35 @@ export async function createRegulation(options: RegulationOptions): Promise<Regu
   let alerts: string[] = [];
   const lastPowerChangeAt: Record<string, number> = {};
   let lastOutcome: Outcome | undefined;
+
+  /**
+   * Le profil d'occupation n'est construit que si quelqu'un s'en sert : un core
+   * dont le préconditionnement est éteint (le défaut livré) ne relit jamais
+   * 28 jours de journal. Quand il l'est, le cache borne la relecture à une par
+   * heure — le journal peut peser des centaines de milliers de lignes.
+   */
+  const occupancyCache =
+    config.preconditioning.enabled && options.journal
+      ? createOccupancyProfileCache({
+          journal: options.journal,
+          timezone: config.timezone,
+          logger,
+          ...(options.occupancyRefreshMs !== undefined
+            ? { refreshIntervalMs: options.occupancyRefreshMs }
+            : {}),
+          ...(options.occupancyWindowDays !== undefined
+            ? { windowDays: options.occupancyWindowDays }
+            : {}),
+          ...(options.occupancyMinObservations !== undefined
+            ? { minObservations: options.occupancyMinObservations }
+            : {}),
+        })
+      : undefined;
+  let occupancyProfile: OccupancyProfile | undefined;
+
+  if (config.preconditioning.enabled && !options.journal) {
+    logger.warn('préconditionnement demandé mais aucun journal fourni : règle inactive');
+  }
 
   let closed = false;
   let running = false;
@@ -174,7 +226,15 @@ export async function createRegulation(options: RegulationOptions): Promise<Regu
 
   const evaluate = async (): Promise<Outcome> => {
     const now = clock();
-    const snapshot = buildSnapshot({ mirror, config, shed, alerts, lastPowerChangeAt });
+    occupancyProfile = occupancyCache?.get(now);
+    const snapshot = buildSnapshot({
+      mirror,
+      config,
+      shed,
+      alerts,
+      lastPowerChangeAt,
+      ...(occupancyProfile !== undefined ? { occupancy: occupancyProfile } : {}),
+    });
     const outcome = decide(snapshot, config, now);
 
     shed = outcome.shed;
@@ -244,6 +304,9 @@ export async function createRegulation(options: RegulationOptions): Promise<Regu
     evaluate,
     get lastOutcome() {
       return lastOutcome;
+    },
+    get occupancyProfile() {
+      return occupancyProfile;
     },
     close() {
       closed = true;

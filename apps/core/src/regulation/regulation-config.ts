@@ -54,6 +54,25 @@ const RoomConfig = z
 /** `forbidden` : la PAC ne doit pas chauffer ; `allowed` : elle est utilisable. */
 const PacPolicy = z.enum(['forbidden', 'allowed']);
 
+/**
+ * Préconditionnement prédictif (P9, spec §16).
+ *
+ * `enabled: false` par défaut, et le défaut est **le bon** : la règle n'a de sens
+ * qu'une fois qu'un profil d'occupation existe (quelques semaines de journal).
+ * Tant qu'elle est éteinte, la régulation est exactement celle de la P6.
+ */
+const Preconditioning = z
+  .object({
+    enabled: z.boolean().default(false),
+    /** Horizon d'anticipation, en minutes — l'inertie thermique du logement. */
+    lookahead_min: z.number().positive().max(360).default(45),
+    /** Probabilité d'occupation à l'horizon au-delà de laquelle on préchauffe. */
+    threshold: z.number().min(0).max(1).default(0.6),
+    /** Plafond de hausse au-dessus de la consigne « absent », en °C. */
+    max_delta: z.number().min(0).max(5).default(1),
+  })
+  .strict();
+
 const RegulationConfigSchema = z
   .object({
     rooms: z.record(RoomConfig),
@@ -84,6 +103,8 @@ const RegulationConfigSchema = z
       })
       .strict(),
     anti_short_cycle_min: z.number().nonnegative(),
+    /** Absent du fichier ⇒ éteint : un core sans profil régule comme en P6. */
+    preconditioning: Preconditioning.default({}),
     /**
      * Absent du fichier livré : la maison est en région lilloise. La clé existe
      * pour que les tests (et un futur déménagement) n'aient pas à toucher au code.
@@ -127,6 +148,17 @@ const RegulationConfigSchema = z
       });
     }
 
+    // Un préconditionnement actif à +0 °C n'aurait aucun effet : c'est forcément
+    // une erreur de saisie (on voulait l'éteindre, ou on a oublié le delta).
+    if (config.preconditioning.enabled && config.preconditioning.max_delta === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['preconditioning', 'max_delta'],
+        message:
+          'un préconditionnement actif à +0 °C ne changerait rien : donner un delta, ou `enabled: false`',
+      });
+    }
+
     // Un `shed_order` qui cite une entité inconnue est une faute de frappe qui ne
     // se verrait qu'un jour de pic, à 9 kVA. On la refuse au chargement.
     const pacs = new Set<string>();
@@ -159,6 +191,7 @@ const RegulationConfigSchema = z
 export type RegulationConfig = z.infer<typeof RegulationConfigSchema>;
 export type RoomConfig = z.infer<typeof RoomConfig>;
 export type Setpoints = z.infer<typeof Setpoints>;
+export type PreconditioningConfig = z.infer<typeof Preconditioning>;
 
 export { RegulationConfigSchema };
 

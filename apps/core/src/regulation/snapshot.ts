@@ -1,5 +1,6 @@
 import { Kind, isKind, type Entity } from '@stellar/contracts';
 import type { Mirror } from '../mirror.js';
+import type { OccupancyProfile } from '../predictive/occupancy.js';
 import type { RegulationConfig } from './regulation-config.js';
 import type {
   ActuatorRole,
@@ -33,6 +34,12 @@ export interface SnapshotSources {
   shed: readonly string[];
   alerts: readonly string[];
   lastPowerChangeAt: Readonly<Record<string, number>>;
+  /**
+   * Profil d'occupation (P9). Il ne vient PAS du miroir — le miroir ne connaît
+   * que le présent — mais du journal, agrégé par le runtime. Il traverse ici pour
+   * que `decide` reste une fonction pure d'un seul instantané.
+   */
+  occupancy?: OccupancyProfile;
 }
 
 /** Ordre stable quand plusieurs entités du même kind existent (déterminisme). */
@@ -144,6 +151,7 @@ export function buildSnapshot(sources: SnapshotSources): Snapshot {
     rooms,
     ...(tempo !== undefined ? { tempo } : {}),
     ...(power !== undefined ? { power } : {}),
+    ...(sources.occupancy !== undefined ? { occupancy: sources.occupancy } : {}),
     shed: sources.shed,
     alerts: sources.alerts,
     lastPowerChangeAt: sources.lastPowerChangeAt,

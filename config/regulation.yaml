@@ -64,3 +64,25 @@ delestage:
 # Délai minimal entre deux bascules marche/arrêt d'un même actionneur (protection
 # du compresseur, spec §10 « jamais d'oscillation »).
 anti_short_cycle_min: 5
+
+# Préconditionnement prédictif (P9, spec §16).
+#
+# Quand une pièce est *absente* mais que le profil d'occupation (calculé dans le
+# core à partir du journal, jamais par le LLM — principe n°1) la dit probablement
+# occupée dans `lookahead_min` minutes, la consigne monte de la consigne « absent »
+# vers la consigne « présent », plafonnée à +`max_delta` °C. Douce, donc : on
+# rattrape l'inertie, on ne chauffe pas une pièce vide à 20,5 °C.
+#
+# Garde-fous ÉNERGIE, non négociables et vérifiés par le golden 07 :
+#   - jamais un jour rouge en heures pleines ;
+#   - jamais en même temps que la préchauffe Tempo (pas de cumul de deltas) ;
+#   - jamais pendant un délestage (le disjoncteur passe avant le confort).
+#
+# `enabled: false` tant qu'aucun profil n'a été relu par un humain
+# (`formatProfile` rend le modèle en texte). TODO_LJ : passer à `true` après
+# 4 semaines de journal, en vérifiant le profil imprimé.
+preconditioning:
+  enabled: false
+  lookahead_min: 45
+  threshold: 0.6
+  max_delta: 1.0

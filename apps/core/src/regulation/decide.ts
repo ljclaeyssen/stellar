@@ -1,3 +1,5 @@
+import type { OccupancyProfile } from '../predictive/occupancy.js';
+import { evaluatePreconditioning } from './precondition.js';
 import type { RegulationConfig, RoomConfig } from './regulation-config.js';
 import { derivePeriode, inTimeRange, localTime, parseTimeOfDay } from './time.js';
 import type {
@@ -25,7 +27,8 @@ import type {
  *
  * 1. **délestage** — protéger le disjoncteur passe avant le confort ; un
  *    actionneur délesté est marqué et le thermostat ne le rallume pas ;
- * 2. **pièces**, dans l'ordre de la config ;
+ * 2. **pièces**, dans l'ordre de la config (dont le préconditionnement prédictif
+ *    de la P9, qui ne fait que relever une consigne — cf. `precondition.ts`) ;
  * 3. **agrégation du chauffage central** — plusieurs pièces peuvent partager un
  *    thermostat : on lui pousse la plus haute des consignes demandées.
  */
@@ -321,6 +324,7 @@ function evaluateRoom(
   minutesOfDay: number,
   now: number,
   shed: ReadonlySet<string>,
+  occupancy: OccupancyProfile | undefined,
   raiseAlert: (key: string) => boolean,
   guard: (entityId: string) => Guard,
 ): RoomOutput {
@@ -381,7 +385,30 @@ function evaluateRoom(
       ? 'nuit'
       : occupancyOf(room, config, now);
   const preheat = !degraded && energy.preheatDelta > 0;
-  const setpoint = round1(roomConfig.setpoints[mode] + (preheat ? energy.preheatDelta : 0));
+  const baseSetpoint = round1(roomConfig.setpoints[mode] + (preheat ? energy.preheatDelta : 0));
+
+  // 2 bis. Préconditionnement prédictif (P9) : une pièce vide bientôt occupée
+  // monte un peu, sauf si l'énergie coûte cher. Il ne fait que déplacer la
+  // consigne — tout le reste du tour (hystérésis, choix d'actionneur, délestage)
+  // continue de s'appliquer tel quel.
+  const precondition = evaluatePreconditioning({
+    room: name,
+    mode,
+    degraded,
+    setpoints: roomConfig.setpoints,
+    baseSetpoint,
+    energy,
+    profile: occupancy,
+    config: config.preconditioning,
+    timezone: config.timezone,
+    now,
+    shedding: shed.size > 0,
+  });
+  /** Non nul seulement quand la préchauffe est **appliquée** (pas refusée). */
+  const applied = precondition?.setpoint !== undefined ? precondition : undefined;
+  const setpoint = applied?.setpoint ?? baseSetpoint;
+  /** Fragment de cause ajouté aux décisions du tour quand la règle s'applique. */
+  const preNote = applied ? ` · ${applied.cause}` : '';
 
   const evaluation: RoomEvaluation = {
     room: name,
@@ -391,8 +418,22 @@ function evaluateRoom(
     mode,
     setpoint,
     preheat,
+    ...(applied
+      ? { precondition: { probability: applied.probability, horizon: applied.horizon } }
+      : {}),
     decisions,
   };
+
+  // Un refus est une information, pas un silence : tracé `blocked` (donc lisible
+  // dans les goldens et en debug, jamais publié sur le bus).
+  if (precondition && precondition.refusal !== undefined) {
+    decisions.push({
+      room: name,
+      decision: 'preconditionnement_refuse',
+      severity: 'blocked',
+      cause: precondition.cause,
+    });
+  }
 
   /** Bascule marche/arrêt d'une PAC, sous contrainte d'anti-court-cycle. */
   const togglePac = (actuator: ActuatorState, power: boolean, cause: string): void => {
@@ -532,7 +573,9 @@ function evaluateRoom(
   const low = round1(setpoint - h);
   const high = round1(setpoint + h);
   const wantHeat = temperature < low ? true : temperature > high ? false : undefined;
-  const band = `consigne ${t(setpoint)} ± ${t(h)} (mode ${mode}${preheat ? ', préchauffe' : ''})`;
+  const band =
+    `consigne ${t(setpoint)} ± ${t(h)} ` +
+    `(mode ${mode}${preheat ? ', préchauffe' : ''}${applied ? ', préconditionnement' : ''})`;
 
   if (chosen.role === 'central') {
     // Le thermostat gère sa propre boucle : on lui pousse la consigne, point.
@@ -544,7 +587,7 @@ function evaluateRoom(
         setpoint,
         room: name,
         actuator: chosen,
-        cause: `${t(temperature)} °C, ${band} · ${energy.label} → consigne ${t(setpoint)} °C au chauffage central`,
+        cause: `${t(temperature)} °C, ${band} · ${energy.label}${preNote} → consigne ${t(setpoint)} °C au chauffage central`,
       },
     };
   }
@@ -553,7 +596,7 @@ function evaluateRoom(
     togglePac(
       chosen,
       true,
-      `${t(temperature)} °C < ${t(low)} °C (${band}) · ${energy.label} → marche de ${chosen.entityId}`,
+      `${t(temperature)} °C < ${t(low)} °C (${band}) · ${energy.label}${preNote} → marche de ${chosen.entityId}`,
     );
   } else if (wantHeat === false && chosen.power) {
     togglePac(
@@ -565,7 +608,7 @@ function evaluateRoom(
     // En marche et dans la bande (ou déjà au bon état) : seule la consigne bouge.
     adjustPac(
       chosen,
-      `${t(temperature)} °C dans la bande, ${band} · ${energy.label} → consigne ${t(setpoint)} °C sur ${chosen.entityId}`,
+      `${t(temperature)} °C dans la bande, ${band} · ${energy.label}${preNote} → consigne ${t(setpoint)} °C sur ${chosen.entityId}`,
     );
   }
 
@@ -629,6 +672,7 @@ export function decide(snapshot: Snapshot, config: RegulationConfig, now: number
       local.minutesOfDay,
       now,
       shed,
+      snapshot.occupancy,
       raiseAlert,
       guard,
     );

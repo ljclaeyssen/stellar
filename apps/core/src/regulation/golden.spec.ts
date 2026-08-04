@@ -3,6 +3,12 @@ import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 import { describe, expect, it } from 'vitest';
 import type { ClimateMode } from '@stellar/contracts';
+import type { JournalRow } from '../journal.js';
+import {
+  buildOccupancyProfile,
+  formatProfile,
+  type OccupancyProfile,
+} from '../predictive/occupancy.js';
 import { decide } from './decide.js';
 import { loadRegulationConfig, type RegulationConfig } from './regulation-config.js';
 import { derivePeriode, localTime, WEEKDAY_LABELS } from './time.js';
@@ -72,20 +78,37 @@ interface ScenarioEvent {
   apply: (world: World) => void;
 }
 
-interface Scenario {
-  slug: string;
-  title: string;
-  description: string;
+/**
+ * Une journée jouée d'un bout à l'autre. La plupart des scénarios n'en ont qu'une
+ * (elle est décrite à même le scénario) ; ceux qui comparent des journées entre
+ * elles — le préconditionnement face aux jours rouges — en enchaînent plusieurs
+ * dans le même fichier golden, monde et mémoire remis à zéro entre chaque.
+ */
+interface ScenarioAct {
+  /** Bandeau affiché avant l'acte, quand le scénario en compte plusieurs. */
+  title?: string;
   /** Epoch ms — toujours donné en UTC, avec l'heure locale en commentaire. */
   start: number;
   stepMin: number;
   steps: number;
-  /** Ajustements de la config de production (pièces retirées, seuils…). */
-  tune?: (config: RegulationConfig) => void;
   world: World;
   /** Température par pièce, une valeur par pas ; la dernière se répète. */
   series?: Record<string, number[]>;
   events?: ScenarioEvent[];
+  /** Profil d'occupation (P9) injecté dans l'instantané. */
+  occupancy?: OccupancyProfile;
+}
+
+interface Scenario extends ScenarioAct {
+  slug: string;
+  title: string;
+  description: string;
+  /** Bandeau du premier acte (les suivants portent le leur). */
+  actTitle?: string;
+  /** Ajustements de la config de production (pièces retirées, seuils…). */
+  tune?: (config: RegulationConfig) => void;
+  /** Actes suivants, joués à la suite dans le même golden. */
+  acts?: ScenarioAct[];
 }
 
 interface Memory {
@@ -126,7 +149,13 @@ function toActuator(
   };
 }
 
-function toSnapshot(world: World, config: RegulationConfig, memory: Memory, now: number): Snapshot {
+function toSnapshot(
+  world: World,
+  config: RegulationConfig,
+  memory: Memory,
+  now: number,
+  occupancy: OccupancyProfile | undefined,
+): Snapshot {
   const rooms: RoomSnapshot[] = Object.entries(config.rooms).map(([room, roomConfig]) => {
     const reading = world.temps[room];
     // Le premier capteur déclaré porte la mesure de la pièce ; les suivants (il
@@ -181,6 +210,7 @@ function toSnapshot(world: World, config: RegulationConfig, memory: Memory, now:
           },
         }
       : {}),
+    ...(occupancy !== undefined ? { occupancy } : {}),
     shed: memory.shed,
     alerts: memory.alerts,
     lastPowerChangeAt: memory.lastPowerChangeAt,
@@ -219,9 +249,13 @@ function renderRoom(evaluation: RoomEvaluation): string {
       : `${evaluation.temperature.toFixed(1).padStart(5)} °C`;
   const source = evaluation.temperatureSource ?? 'aucune mesure';
   const chosen = evaluation.chosen ?? 'aucun';
+  const pre = evaluation.precondition;
+  const marks =
+    (evaluation.preheat ? ' (préchauffe)' : '') +
+    (pre ? ` (préconditionnement p=${pre.probability.toFixed(2)} → ${pre.horizon})` : '');
   return (
     `  ${name} ${temp} (${source}) · ${evaluation.mode} · ` +
-    `consigne ${evaluation.setpoint.toFixed(1)}${evaluation.preheat ? ' (préchauffe)' : ''} · ${chosen}`
+    `consigne ${evaluation.setpoint.toFixed(1)}${marks} · ${chosen}`
   );
 }
 
@@ -257,14 +291,49 @@ function renderStep(outcome: Outcome, world: World): string[] {
   return lines;
 }
 
+/** Une journée complète : monde neuf, mémoire vierge, horloge qui avance. */
+function runAct(config: RegulationConfig, act: ScenarioAct): string[] {
+  const world = structuredClone(act.world);
+  const memory: Memory = { shed: [], alerts: [], lastPowerChangeAt: {} };
+  const events = [...(act.events ?? [])].sort((a, b) => a.atMin - b.atMin);
+  let nextEvent = 0;
+
+  const body: string[] = [];
+  if (act.title !== undefined) {
+    body.push(`════════ ${act.title}`, `         pas de ${act.stepMin} min · ${act.steps} pas`, '');
+  }
+
+  for (let step = 0; step < act.steps; step += 1) {
+    const now = act.start + step * act.stepMin * 60_000;
+
+    while (nextEvent < events.length && (events[nextEvent]?.atMin ?? 0) <= step * act.stepMin) {
+      const event = events[nextEvent];
+      nextEvent += 1;
+      if (!event) continue;
+      event.apply(world);
+      body.push(`>>> ${event.label}`);
+    }
+
+    for (const [room, values] of Object.entries(act.series ?? {})) {
+      const value = values[Math.min(step, values.length - 1)];
+      const current = world.temps[room];
+      if (value !== undefined && current) current.value = value;
+    }
+
+    const outcome = decide(toSnapshot(world, config, memory, now, act.occupancy), config, now);
+    memory.shed = outcome.shed;
+    memory.alerts = outcome.alerts;
+    applyToWorld(world, outcome, now, memory);
+
+    body.push(...renderStep(outcome, world), '');
+  }
+
+  return body;
+}
+
 function runScenario(scenario: Scenario): string {
   const config = loadRegulationConfig(PROD_CONFIG);
   scenario.tune?.(config);
-
-  const world = structuredClone(scenario.world);
-  const memory: Memory = { shed: [], alerts: [], lastPowerChangeAt: {} };
-  const events = [...(scenario.events ?? [])].sort((a, b) => a.atMin - b.atMin);
-  let nextEvent = 0;
 
   const header = [
     `# scénario : ${scenario.title}`,
@@ -274,40 +343,46 @@ function runScenario(scenario: Scenario): string {
     `#          délestage ${config.delestage.max_va}/${config.delestage.margin_va}/${config.delestage.rearm_va} VA` +
       ` [${config.delestage.shed_order.join(', ')}]`,
     `#          préchauffe dès ${config.energy.preheat_before_red.start} (+${config.energy.preheat_before_red.delta} °C)`,
+  ];
+  // Ligne conditionnelle : les goldens de la P6 ne bougent pas d'un octet tant que
+  // le préconditionnement est éteint (ce qu'il est dans le fichier livré).
+  if (config.preconditioning.enabled) {
+    const p9 = config.preconditioning;
+    header.push(
+      `#          préconditionnement : horizon ${p9.lookahead_min} min · seuil ${p9.threshold} · max +${p9.max_delta.toFixed(1)} °C`,
+    );
+  }
+  header.push(
     `# pas de ${scenario.stepMin} min · ${scenario.steps} pas · fuseau ${config.timezone}`,
     '',
-  ];
+  );
 
-  const body: string[] = [];
-  for (let step = 0; step < scenario.steps; step += 1) {
-    const now = scenario.start + step * scenario.stepMin * 60_000;
-
-    while (
-      nextEvent < events.length &&
-      (events[nextEvent]?.atMin ?? 0) <= step * scenario.stepMin
-    ) {
-      const event = events[nextEvent];
-      nextEvent += 1;
-      if (!event) continue;
-      event.apply(world);
-      body.push(`>>> ${event.label}`);
-    }
-
-    for (const [room, values] of Object.entries(scenario.series ?? {})) {
-      const value = values[Math.min(step, values.length - 1)];
-      const current = world.temps[room];
-      if (value !== undefined && current) current.value = value;
-    }
-
-    const outcome = decide(toSnapshot(world, config, memory, now), config, now);
-    memory.shed = outcome.shed;
-    memory.alerts = outcome.alerts;
-    applyToWorld(world, outcome, now, memory);
-
-    body.push(...renderStep(outcome, world), '');
+  // Le modèle prédictif est committé AVEC le scénario : le DoD P9 demande un gain
+  // « mesurable », donc un profil qu'un humain peut relire avant de le croire.
+  if (scenario.occupancy) {
+    header.push(
+      ...formatProfile(scenario.occupancy)
+        .split('\n')
+        .map((line) => (line.length > 0 ? `# ${line}` : '#')),
+      '',
+    );
   }
 
-  return [...header, ...body].join('\n');
+  const acts: ScenarioAct[] = [
+    {
+      ...(scenario.actTitle !== undefined ? { title: scenario.actTitle } : {}),
+      start: scenario.start,
+      stepMin: scenario.stepMin,
+      steps: scenario.steps,
+      world: scenario.world,
+      ...(scenario.series !== undefined ? { series: scenario.series } : {}),
+      ...(scenario.events !== undefined ? { events: scenario.events } : {}),
+      ...(scenario.occupancy !== undefined ? { occupancy: scenario.occupancy } : {}),
+    },
+    ...(scenario.acts ?? []),
+  ];
+
+  return [...header, ...acts.flatMap((act) => runAct(config, act))].join('\n');
 }
 
 // ──────────────────────────────── scénarios ────────────────────────────────
@@ -322,6 +397,63 @@ const climat = (targetTemp: number, indoorTemp: number): WorldActuator => ({
 /** 2026-01-15 00:00 heure locale (Europe/Paris, UTC+1 en janvier). */
 const JANVIER_15_MINUIT = Date.UTC(2026, 0, 14, 23, 0);
 const heures = (n: number): number => n * 60;
+
+// ─────────────── profil d'occupation du scénario 07 (P9, prédictif) ───────────────
+
+/** 2026-01-15 17:00 locale — un jeudi, une heure avant que le salon se remplisse. */
+const JANVIER_15_17H = Date.UTC(2026, 0, 15, 16, 0);
+/** 2026-01-16 03:30 locale — un vendredi, en pleines heures creuses. */
+const JANVIER_16_03H30 = Date.UTC(2026, 0, 16, 2, 30);
+
+/**
+ * Quatre semaines de mmWave dans le salon, rendues sous forme de **lignes de
+ * journal** : le golden part donc de la même matière que la production (des
+ * percepts bruts), et pas d'un profil écrit à la main. Le modèle qu'on relit dans
+ * l'en-tête du golden est bien celui que `buildOccupancyProfile` déduit.
+ *
+ * La maisonnée : lever à 5 h en semaine (poste du matin), retour à 18:30 ; le
+ * week-end, debout vers 11 h et personne à 5 h. C'est exactement la distinction
+ * semaine/week-end que le modèle prétend capturer.
+ */
+function profilSalon(): OccupancyProfile {
+  const rows: JournalRow[] = [];
+  let id = 0;
+  for (let day = 1; day <= 28; day += 1) {
+    const midnight = JANVIER_15_MINUIT - day * 86_400_000;
+    for (let slot = 0; slot < 48; slot += 1) {
+      const at = midnight + slot * 30 * 60_000;
+      const minutes = slot * 30;
+      const { weekday } = localTime(at, 'Europe/Paris');
+      const occupied =
+        weekday === 0 || weekday === 6
+          ? minutes >= heures(11) && minutes < heures(23)
+          : (minutes >= heures(5) && minutes < heures(7)) ||
+            (minutes >= heures(18) + 30 && minutes < heures(23));
+      const ts = new Date(at).toISOString();
+      id += 1;
+      rows.push({
+        id,
+        ts,
+        topic: 'home/state/fakepercepts/presence_salon',
+        driver: 'fakepercepts',
+        entityId: 'presence_salon',
+        kind: 'presence',
+        payload: JSON.stringify({
+          id: 'presence_salon',
+          driver: 'fakepercepts',
+          kind: 'presence',
+          room: 'salon',
+          value: occupied,
+          ts,
+        }),
+        issuedBy: null,
+      });
+    }
+  }
+  return buildOccupancyProfile(rows, { now: JANVIER_15_17H, timezone: 'Europe/Paris' });
+}
+
+const PROFIL_SALON = profilSalon();
 
 const scenarios: Scenario[] = [
   {
@@ -627,6 +759,120 @@ const scenarios: Scenario[] = [
             if (actuator) actuator.driverOnline = true;
           }
         },
+      },
+    ],
+  },
+
+  {
+    slug: '07-preconditionnement',
+    title: 'préconditionnement prédictif : la préchauffe douce et ses trois interdits',
+    description:
+      "Le salon est vide, mais quatre semaines de journal disent qu'il se remplit à\n" +
+      '18:30. Trois actes, trois journées, le MÊME profil (relisible ci-dessous) :\n' +
+      "  I  — jour bleu : à 17:45 l'horizon tombe sur 18:30, la consigne « absent »\n" +
+      '       monte de 17 à 18 °C et la PAC démarre. À 18:30 quelqu’un arrive\n' +
+      '       vraiment : le fait remplace la prédiction, consigne 20,5 °C.\n' +
+      '  II — MÊME heure, MÊME profil, mais jour rouge en heures pleines : refus\n' +
+      '       tracé, consigne inchangée à 17 °C. C’est le « sans hausse de conso les\n' +
+      '       jours rouges » du DoD P9, pris sur le fait.\n' +
+      '  III— nuit rouge→rouge, heures creuses : la préchauffe Tempo (+1 °C) est\n' +
+      '       déjà active. Le préconditionnement se retire — pas de cumul de deltas.\n' +
+      'Config resserrée pour l’occasion : une seule pièce (le sujet est la règle, pas\n' +
+      'la maison), et une plage nuit 23:00→03:00 sans quoi l’acte III se jouerait en\n' +
+      'mode `nuit`, qui a sa propre consigne et ne se préconditionne jamais.',
+    actTitle: 'acte I — jour bleu : la préchauffe a lieu',
+    start: JANVIER_15_17H,
+    stepMin: 15,
+    steps: 12,
+    occupancy: PROFIL_SALON,
+    tune: (config) => {
+      delete config.rooms['entree'];
+      delete config.rooms['chambre'];
+      config.delestage.shed_order = [];
+      config.preconditioning = { enabled: true, lookahead_min: 45, threshold: 0.6, max_delta: 1 };
+      config.night = { start: '23:00', end: '03:00' };
+    },
+    world: {
+      temps: { salon: { value: 17.2 } },
+      // Parti depuis trois heures : la pièce est franchement `absent`.
+      presence: { salon: { value: false, ts: JANVIER_15_17H - 3 * 3_600_000 } },
+      tempo: { couleurJour: 'bleu', couleurDemain: 'bleu' },
+      power: { va: 1200 },
+      actuators: {
+        clim_salon: climat(17, 17.2),
+        thermostat_maison: { power: true, targetTemp: 8, mode: 'heat' },
+      },
+    },
+    series: {
+      salon: [17.2, 17.2, 17.2, 17.2, 17.5, 17.9, 18.2, 18.7, 19.2, 19.6, 19.9, 20.1],
+    },
+    events: [
+      {
+        atMin: 90,
+        label: 'retour à la maison : la prédiction est confirmée par le capteur',
+        apply: (world) => {
+          world.presence['salon'] = { value: true, ts: JANVIER_15_17H + 90 * 60_000 };
+        },
+      },
+    ],
+    acts: [
+      {
+        title:
+          'acte II — MÊME profil, MÊME heure, jour rouge en heures pleines : aucune préchauffe',
+        start: JANVIER_15_17H,
+        stepMin: 15,
+        steps: 12,
+        occupancy: PROFIL_SALON,
+        world: {
+          temps: { salon: { value: 17.2 } },
+          presence: { salon: { value: false, ts: JANVIER_15_17H - 3 * 3_600_000 } },
+          tempo: { couleurJour: 'rouge', couleurDemain: 'inconnue' },
+          power: { va: 1200 },
+          actuators: {
+            clim_salon: climat(17, 17.2),
+            thermostat_maison: { power: true, targetTemp: 8, mode: 'heat' },
+          },
+        },
+        series: {
+          salon: [17.2, 17.2, 17.1, 17.1, 17.2, 17.3, 17.5, 17.8, 18.2, 18.6, 19.0, 19.4],
+        },
+        events: [
+          {
+            atMin: 90,
+            label: 'retour à la maison (la chaudière prend le relais, pas la PAC)',
+            apply: (world) => {
+              world.presence['salon'] = { value: true, ts: JANVIER_15_17H + 90 * 60_000 };
+            },
+          },
+        ],
+      },
+      {
+        title: 'acte III — nuit rouge en heures creuses : la préchauffe Tempo tient déjà le delta',
+        start: JANVIER_16_03H30,
+        stepMin: 15,
+        steps: 8,
+        occupancy: PROFIL_SALON,
+        world: {
+          temps: { salon: { value: 17.5 } },
+          presence: { salon: { value: false, ts: JANVIER_16_03H30 - 3 * 3_600_000 } },
+          // Deux jours rouges d'affilée : la préchauffe d'avant-rouge est armée.
+          tempo: { couleurJour: 'rouge', couleurDemain: 'rouge' },
+          power: { va: 900 },
+          actuators: {
+            clim_salon: climat(17, 17.5),
+            thermostat_maison: { power: true, targetTemp: 8, mode: 'heat' },
+          },
+        },
+        series: { salon: [17.5, 17.6, 17.8, 18.0, 18.2, 18.4, 18.6, 19.0] },
+        events: [
+          {
+            atMin: 90,
+            label: 'lever : le poste du matin commence, le capteur voit du monde',
+            apply: (world) => {
+              world.presence['salon'] = { value: true, ts: JANVIER_16_03H30 + 90 * 60_000 };
+            },
+          },
+        ],
       },
     ],
   },
