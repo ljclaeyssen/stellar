@@ -1,0 +1,34 @@
+{
+  "name": "@stellar/driver-fake-shutter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "stellar-fake-shutter": "./dist/main.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": [
+    "src",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@stellar/bus": "workspace:*",
+    "@stellar/contracts": "workspace:*",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@stellar/test-utils": "workspace:*",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.0"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  // Projet de *lint et de typecheck* : il revendique tout `src`, specs comprises
+  // (même motif que apps/core et apps/drivers/hue). Ce package ne figure donc pas
+  // dans la liste `allowDefaultProject` d'eslint.config.js.
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "noEmit": true
+  },
+  "include": ["src"]
+}

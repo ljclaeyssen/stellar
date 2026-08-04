@@ -23,6 +23,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@stellar/driver-fake-shutter": "workspace:*",
     "@stellar/test-utils": "workspace:*",
     "@types/better-sqlite3": "^9.6.0",
     "@types/ws": "^8.18.1",
