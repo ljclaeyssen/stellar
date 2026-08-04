@@ -3,6 +3,7 @@ import type { Bus, Logger } from '@stellar/bus';
 import type { Kind } from '@stellar/contracts';
 import { startApiServer, type ApiServer } from './api.js';
 import { createJournal, journalEntryFromMessage, type Journal } from './journal.js';
+import { CORE_MCP_DEFAULT_PORT, startMcpServer, type McpHttpServer } from './mcp/index.js';
 import { createMirror, type Mirror } from './mirror.js';
 import { createRegulation, loadRegulationConfig, type Regulation } from './regulation/index.js';
 import { createStaleWatcher, type StaleWatcher } from './stale.js';
@@ -28,6 +29,20 @@ export interface RegulationCoreOptions {
   triggerDebounceMs?: number;
 }
 
+export interface McpCoreOptions {
+  /** 0 = port éphémère (tests). Défaut `CORE_MCP_DEFAULT_PORT` (8851). */
+  port?: number;
+  /** Loopback par défaut : le serveur MCP n'est pas authentifié (spec §14). */
+  host?: string;
+  /** Défaut : activé — l'agent est un consommateur de première classe du core. */
+  enabled?: boolean;
+  /**
+   * Fichier lu par `get_regulation_config`. Défaut : celui de la régulation quand
+   * elle est configurée — un core qui régule sait toujours expliquer avec quoi.
+   */
+  regulationConfigPath?: string;
+}
+
 export interface CoreOptions {
   bus: Bus;
   logger: Logger;
@@ -42,6 +57,8 @@ export interface CoreOptions {
   clock?: () => number;
   /** Absent = pas de régulation du tout (tests unitaires du miroir/journal). */
   regulation?: RegulationCoreOptions;
+  /** Serveur MCP (P7). Absent = valeurs par défaut, donc **activé**. */
+  mcp?: McpCoreOptions;
 }
 
 export interface Core {
@@ -52,6 +69,8 @@ export interface Core {
   api: ApiServer | null;
   /** `null` quand la régulation est désactivée ou sans fichier de configuration. */
   regulation: Regulation | null;
+  /** `null` quand `mcp: { enabled: false }`. */
+  mcp: McpHttpServer | null;
   close(): Promise<void>;
 }
 
@@ -126,6 +145,38 @@ async function startRegulation(
   return regulation;
 }
 
+/**
+ * Montage du serveur MCP (P7).
+ *
+ * Il ne reçoit que des composants déjà construits : le MCP est une **façade**,
+ * pas un étage de logique. Son fichier de régulation par défaut est celui de la
+ * régulation elle-même, pour que `get_regulation_config` réponde toujours avec le
+ * fichier qui a réellement produit les décisions.
+ */
+async function startMcp(
+  options: CoreOptions,
+  mirror: Mirror,
+  journal: Journal,
+  bus: Bus,
+  logger: Logger,
+): Promise<McpHttpServer | null> {
+  const settings = options.mcp;
+  if (settings?.enabled === false) return null;
+
+  const regulationConfigPath = settings?.regulationConfigPath ?? options.regulation?.configPath;
+  const mcp = await startMcpServer({
+    mirror,
+    journal,
+    bus,
+    logger,
+    port: settings?.port ?? CORE_MCP_DEFAULT_PORT,
+    ...(settings?.host !== undefined ? { host: settings.host } : {}),
+    ...(regulationConfigPath !== undefined ? { regulationConfigPath } : {}),
+  });
+  logger.info('serveur MCP actif', { url: mcp.url });
+  return mcp;
+}
+
 export async function createCore(options: CoreOptions): Promise<Core> {
   const { bus, logger, journalPath } = options;
 
@@ -169,15 +220,19 @@ export async function createCore(options: CoreOptions): Promise<Core> {
           ...(options.apiHost !== undefined ? { host: options.apiHost } : {}),
         });
 
+  const mcp = await startMcp(options, mirror, journal, bus, logger);
+
   return {
     mirror,
     journal,
     staleWatcher,
     api,
     regulation,
+    mcp,
     async close() {
       regulation?.close();
       staleWatcher.close();
+      await mcp?.close();
       await api?.close();
       // Le bus n'appartient pas au core : c'est l'appelant qui le ferme, et il doit
       // le faire AVANT (un message arrivant après `journal.close()` ne serait plus

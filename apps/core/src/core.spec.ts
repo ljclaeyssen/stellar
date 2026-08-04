@@ -66,6 +66,9 @@ describe('core — journal alimenté par le bus et relu par l’API', () => {
       logger,
       journalPath: ':memory:',
       apiPort: null,
+      // Le serveur MCP a sa propre suite (mcp.spec.ts) : ici il n'ajouterait qu'un
+      // port à réserver — et un conflit possible avec les suites voisines.
+      mcp: { enabled: false },
       // Pas de détection stale ici : elle a sa propre suite, et son horloge réelle
       // ferait du bruit dans le journal.
       staleCheckIntervalMs: 3_600_000,

@@ -78,6 +78,8 @@ describe('DoD P5', () => {
       logger,
       journalPath: ':memory:',
       apiPort: 0,
+      // DoD P5 : le serveur MCP (P7) n'a rien à faire dans ce scénario.
+      mcp: { enabled: false },
       clock: () => now,
       // Le tour de veille est déclenché à la main dans le test (le timer réel
       // rendrait le scénario non déterministe).

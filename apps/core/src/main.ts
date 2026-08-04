@@ -6,13 +6,21 @@ import { createCore } from './core.js';
 const logger = createLogger('core');
 const mqttUrl = process.env.STELLAR_MQTT_URL ?? 'mqtt://localhost:1883';
 const dbPath = process.env.CORE_DB_PATH ?? 'data/journal.db';
-const apiPort = Number(process.env.CORE_API_PORT ?? 8850);
 const regulationFile = process.env.CORE_REGULATION_FILE ?? 'config/regulation.yaml';
 
-if (!Number.isInteger(apiPort) || apiPort < 0 || apiPort > 65_535) {
-  logger.error('CORE_API_PORT invalide', { value: process.env.CORE_API_PORT });
-  process.exit(1);
+/** Un port hors bornes est une faute de configuration : on refuse de démarrer. */
+function readPort(name: string, fallback: number): number {
+  const raw = process.env[name];
+  const port = Number(raw ?? fallback);
+  if (!Number.isInteger(port) || port < 0 || port > 65_535) {
+    logger.error(`${name} invalide`, { value: raw });
+    process.exit(1);
+  }
+  return port;
 }
+
+const apiPort = readPort('CORE_API_PORT', 8850);
+const mcpPort = readPort('CORE_MCP_PORT', 8851);
 
 /** Masque `user:pass@` dans une URL MQTT — les logs partent en clair vers journald. */
 function redactUrl(url: string): string {
@@ -28,12 +36,15 @@ const core = await createCore({
   // Régulation active dès que le fichier existe (spec §10) — pas de flag à penser
   // en production, et les tests montent un core sans régulation en l'omettant.
   regulation: { configPath: regulationFile },
+  // Serveur MCP : porte d'entrée d'apps/agent, en loopback comme l'API (spec §10).
+  mcp: { port: mcpPort },
 });
 
 logger.info('core démarré', {
   mqttUrl: redactUrl(mqttUrl),
   dbPath,
   apiPort: core.api?.port,
+  mcpUrl: core.mcp?.url,
   journalRows: core.journal.count(),
   regulation: core.regulation !== null ? regulationFile : 'inactive',
 });
