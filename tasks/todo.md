@@ -10,6 +10,29 @@
 
 ---
 
+# P7 — MCP + Agent v1 (DoD simulé atteint le 2026-08-04)
+
+- [x] Serveur MCP core : 7 tools (get_state, send_command issuedBy=agent forcé + refus lock/kinds réservés, subscribe/poll borné FIFO+TTL,
+      list_capabilities, query_journal strict, get_regulation_config lecture
+      seule), HTTP streamable loopback, chaque appel loggé ; 16 tests dont
+      double preuve d'absence sur les kinds interdits
+- [x] apps/agent : sessions éphémères query() du Claude Agent SDK (couture
+      queryFn → testable sans LLM), allowlist 3 couches (tools socle réduit,
+      allowedTools nominatif, disallowedTools + settingSources:[] +
+      strictMcpConfig), system prompt vocal « Stellar Home », market_quote
+      provider pluggable (fake par défaut), propose_regulation_change →
+      config/proposals/ + événement bus + apply CLI à confirmation (jamais
+      d'écriture de regulation.yaml — testé aux octets), planner du matin
+      (prompt construit sur le MCP réel), budget/usage quotidien loggé,
+      service HTTP /turn + /planner/run (future prise HA P8) ; 27 tests
+- [x] Dérive de noms de tools couverte : le test compare l'allowlist aux tools
+      réellement servis par le core vivant
+- [x] Units systemd agent + planner.timer (infra/systemd/) ; `check:p7`
+- Notes : SDK réclame zod ^4 en peer (v3 accepté par AnyZodRawShape — à revoir
+  à la migration zod 4) ; MARKET_PROVIDER n'a que `fake` (choix humain TODO_LJ).
+
+---
+
 # P6 — Tempo + régulation (DoD simulé atteint le 2026-08-04)
 
 - [x] tempo-driver + sim : RTE OAuth + fallback opendata sans compte, wrap du
