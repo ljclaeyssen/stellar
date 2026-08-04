@@ -25,6 +25,8 @@
     "check:p6": "pnpm check",
     "check:p7": "pnpm check",
     "check:p8": "pnpm check",
+    "check:p9": "pnpm check",
+    "bench": "node scripts/bench.mjs",
     "secrets:encrypt": "sops -e -i",
     "secrets:decrypt": "sops -d"
   },

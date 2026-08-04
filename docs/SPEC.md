@@ -147,7 +147,7 @@ export const Kind = z.enum([
   'button',
   'doorbell',
   'lock',
-]); // les 4 derniers : réservés futur ; 'lock' jamais piloté par l'agent
+]); // cover : ouvert en P9 (CoverValue, PR partagée) ; button/doorbell/lock : réservés futur ; 'lock' jamais piloté par l'agent
 
 export const Entity = z.object({
   id: z.string(),

@@ -146,6 +146,12 @@ ne jamais régénérer un token depuis le portail pendant que le driver tourne
 5. Plus tard (hors DoD) : entraîner « OK Stellar » (openWakeWord) et trancher
    ADR-007.
 
+## P9 — Prédictif (quand le journal aura ~4 semaines de données réelles)
+
+- Relire le profil d'occupation (`formatProfile` — exposé sur le handle de
+  régulation) et, s'il te semble juste, activer `preconditioning.enabled: true`
+  dans `config/regulation.yaml`.
+
 ## P1 — La télé (pour valider le DoD)
 
 - Activer la **veille réseau** sur la TV Android TV (ne jamais la couper par une prise).

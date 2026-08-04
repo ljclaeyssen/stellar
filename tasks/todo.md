@@ -10,6 +10,31 @@
 
 ---
 
+# P9 — Prédictif + extensibilité (DoD simulé atteint le 2026-08-04 — SPEC COUVERTE)
+
+- [x] Occupation probabiliste (apps/core/src/predictive) : modèle inspectable
+      (comptages Laplace par pièce/type de jour/créneau 30 min, formatProfile
+      relisible), exclusion des republis stale, ts du payload (pas de pic au
+      redémarrage), carry-forward intra-journée, undefined ≠ « probablement
+      vide » ; cache 1 h ; 25 tests
+- [x] Préconditionnement : consigne relevée bornée min(present, absent+delta),
+      gardes dans l'ordre délestage > rouge HP > pas de cumul avec préchauffe
+      Tempo ; golden 07 en 3 actes (bleu → chauffe anticipée ; rouge HP → refus
+      visible ; rouge HC → pas de cumul) ; goldens 01-06 inchangés à l'octet ;
+      enabled:false par défaut (activer après ~4 semaines de journal — TODO_LJ)
+- [x] PR partagée cover (spec §7) : CoverValue aux contrats, MCP n'interdit plus
+      que lock/button/doorbell, pont HA mappe cover (position + verbes JSON)
+- [x] apps/drivers/fake-shutter : driver ordinaire complet (machine d'état
+      progressive, 8 tests)
+- [x] **Test d'acceptance §13** (p9-extensibilite.spec) : core complet démarré
+      ignorant → driver branché à chaud → visible dans list_capabilities,
+      piloté par MCP (issued_by agent) ET par HA (issued_by voice), ET
+      grep auto-vérifiant : aucune source de core/agent ne nomme le driver
+- [x] `pnpm bench` : maison simulée complète (sims + drivers + core) pour
+      exploration manuelle ; `check:p9`
+
+---
+
 # P8 — Voix (partie logicielle livrée le 2026-08-04 — satellites/HA réels humains)
 
 - [x] Pont HA-discovery (apps/core/src/ha-bridge) : table kind→composant HA

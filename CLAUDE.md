@@ -4,8 +4,8 @@ Domotique homemade pilotée par agent. **Lis `docs/SPEC.md` en intégralité ava
 
 ## État courant
 
-- Phase en cours : **P2 — Lumières & prises** (P0 validée le 2026-08-02 ; P1 validée en simulé le 2026-08-03 — DoD matériel en attente, voir TODO_LJ.md)
-- Mode de travail (demande humaine du 2026-08-03) : enchaîner toutes les phases en s'appuyant sur les simulateurs (`docs/TESTING.md`, ADR-010) ; chaque DoD matériel est remplacé par un DoD simulé + une checklist de branchement dans TODO_LJ.md.
+- Phase en cours : **toutes les phases P0→P9 sont livrées en simulé** (P0 le 2026-08-02, P1-P5 le 2026-08-03, P6-P9 le 2026-08-04). Les DoD matériels restent à valider phase par phase — checklists dans TODO_LJ.md.
+- Mode de travail (demande humaine du 2026-08-03) : développement sur simulateurs (`docs/TESTING.md`, ADR-010) ; chaque DoD matériel est remplacé par un DoD simulé + une checklist de branchement dans TODO_LJ.md. Banc d'essai complet : `pnpm bench` (mosquitto docker requis).
 - (Mettre à jour cette ligne à chaque phase validée.)
 
 ## Règles de travail

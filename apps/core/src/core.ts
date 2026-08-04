@@ -134,6 +134,8 @@ async function startRegulation(
   mirror: Mirror,
   bus: Bus,
   logger: Logger,
+  /** P9 : source du profil d'occupation (préconditionnement). */
+  journal: Journal,
 ): Promise<Regulation | null> {
   const settings = options.regulation;
   if (!settings || settings.enabled === false) return null;
@@ -154,6 +156,7 @@ async function startRegulation(
     bus,
     logger,
     config,
+    journal,
     ...(options.clock !== undefined ? { clock: options.clock } : {}),
     ...(settings.evaluateIntervalMs !== undefined
       ? { evaluateIntervalMs: settings.evaluateIntervalMs }
@@ -266,7 +269,7 @@ export async function createCore(options: CoreOptions): Promise<Core> {
     ...(options.clock !== undefined ? { clock: options.clock } : {}),
   });
 
-  const regulation = await startRegulation(options, mirror, bus, logger);
+  const regulation = await startRegulation(options, mirror, bus, logger, journal);
 
   const api =
     options.apiPort === null || options.apiPort === undefined
