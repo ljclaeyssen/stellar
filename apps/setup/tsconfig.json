@@ -1,0 +1,13 @@
+{
+  // Projet de *lint et de typecheck* : il revendique tout `src`, specs comprises
+  // (scission décrite dans eslint.config.js — ce package n'a donc pas à figurer
+  // dans `allowDefaultProject`).
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src"]
+}

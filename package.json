@@ -26,6 +26,7 @@
     "check:p7": "pnpm check",
     "check:p8": "pnpm check",
     "check:p9": "pnpm check",
+    "setup:ui": "pnpm --filter @stellar/setup run build && node apps/setup/dist/main.js",
     "bench": "node scripts/bench.mjs",
     "secrets:encrypt": "sops -e -i",
     "secrets:decrypt": "sops -d"

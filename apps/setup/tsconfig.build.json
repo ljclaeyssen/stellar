@@ -1,0 +1,11 @@
+{
+  // Émission vers `dist/` — les specs en sont exclues (cf. tsconfig.json).
+  // `src/ui.html` n'est pas du TypeScript : c'est `scripts/copy-assets.mjs` qui
+  // le recopie dans `dist/`, juste après `tsc`.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.spec.ts", "src/testing.ts"]
+}

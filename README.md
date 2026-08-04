@@ -27,8 +27,13 @@ claude
 puis tape `/setup` — l'assistant vérifie les prérequis, remplit `.env` avec
 toi (modèle : [.env.example](.env.example)), initialise sops/age, et déroule
 les branchements matériels (TV, Hue, Netatmo, Midea, Zigbee) selon les
-checklists de [TODO_LJ.md](TODO_LJ.md). Sans Claude : suivre TODO_LJ.md à la
-main, tout y est.
+checklists de [TODO_LJ.md](TODO_LJ.md).
+
+Sans installer Claude Code, `ANTHROPIC_API_KEY=… pnpm setup:ui` sert le même
+assistant (même fichier `/setup`) dans une page locale sur
+http://127.0.0.1:8853, où chaque commande et chaque écriture de fichier
+demandent ton accord avant de s'exécuter. Sans clé du tout : suivre TODO_LJ.md
+à la main, tout y est.
 
 ## Layout
 

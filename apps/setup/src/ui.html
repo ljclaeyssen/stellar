@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Stellar — mise en service</title>
+    <style>
+      /*
+        Une page, zéro dépendance, zéro CDN : ce service tourne sur une machine
+        qui n'a peut-être pas encore de réseau configuré. Tout ce qui s'affiche
+        ici est dans ce fichier.
+      */
+      :root {
+        color-scheme: light dark;
+        --bg: #fbfbfa;
+        --panel: #ffffff;
+        --ink: #1b1b19;
+        --muted: #6b6b66;
+        --line: #e2e0da;
+        --accent: #7a5cff;
+        --ok: #2f8f4e;
+        --off: #b0aca3;
+        --warn: #b4541e;
+        --code-bg: #f2f1ec;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #17171a;
+          --panel: #1e1e22;
+          --ink: #e9e8e4;
+          --muted: #9b988f;
+          --line: #2e2e34;
+          --accent: #a690ff;
+          --ok: #6cc98a;
+          --off: #5c5a56;
+          --warn: #e08a52;
+          --code-bg: #26262b;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          15px/1.55 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          sans-serif;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+      header {
+        border-bottom: 1px solid var(--line);
+        padding: 10px 18px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        flex-wrap: wrap;
+        background: var(--panel);
+      }
+      h1 {
+        font-size: 15px;
+        font-weight: 620;
+        margin: 0;
+        letter-spacing: 0.01em;
+      }
+      h1 span {
+        color: var(--muted);
+        font-weight: 400;
+      }
+      #status {
+        display: flex;
+        gap: 14px;
+        margin-left: auto;
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      .pill {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--off);
+      }
+      .dot.on {
+        background: var(--ok);
+      }
+      main {
+        flex: 1;
+        overflow-y: auto;
+        padding: 22px 18px 8px;
+      }
+      #log {
+        max-width: 820px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .msg {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .who {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--muted);
+      }
+      .bubble {
+        padding: 10px 13px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        overflow-wrap: anywhere;
+      }
+      .msg.user .bubble {
+        background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+        border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+      }
+      .msg.note .bubble {
+        background: transparent;
+        border: none;
+        padding: 0 2px;
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+      .msg.error .bubble {
+        border-color: var(--warn);
+        color: var(--warn);
+      }
+      .bubble p {
+        margin: 0 0 0.6em;
+      }
+      .bubble p:last-child {
+        margin-bottom: 0;
+      }
+      .bubble ul {
+        margin: 0 0 0.6em;
+        padding-left: 1.2em;
+      }
+      .bubble code {
+        background: var(--code-bg);
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12.5px;
+      }
+      .bubble pre {
+        background: var(--code-bg);
+        padding: 10px 12px;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 0 0 0.6em;
+      }
+      .bubble pre code {
+        background: none;
+        padding: 0;
+      }
+      .card {
+        border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+        border-radius: 10px;
+        background: var(--panel);
+        overflow: hidden;
+      }
+      .card > .head {
+        padding: 9px 13px;
+        display: flex;
+        align-items: baseline;
+        gap: 9px;
+        border-bottom: 1px solid var(--line);
+      }
+      .tool {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--accent);
+      }
+      .summary {
+        font-size: 13px;
+        color: var(--muted);
+        overflow-wrap: anywhere;
+      }
+      .card pre {
+        margin: 0;
+        padding: 11px 13px;
+        max-height: 320px;
+        overflow: auto;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12.5px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .actions {
+        display: flex;
+        gap: 9px;
+        padding: 10px 13px;
+        border-top: 1px solid var(--line);
+        align-items: center;
+      }
+      button {
+        font: inherit;
+        font-size: 13px;
+        padding: 6px 14px;
+        border-radius: 7px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--ink);
+        cursor: pointer;
+      }
+      button:hover:not(:disabled) {
+        border-color: var(--accent);
+      }
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .verdict {
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      .verdict.allow {
+        color: var(--ok);
+      }
+      .verdict.deny {
+        color: var(--warn);
+      }
+      footer {
+        border-top: 1px solid var(--line);
+        background: var(--panel);
+        padding: 12px 18px 16px;
+      }
+      form {
+        max-width: 820px;
+        margin: 0 auto;
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+      }
+      textarea {
+        flex: 1;
+        resize: none;
+        font: inherit;
+        padding: 9px 11px;
+        border-radius: 9px;
+        border: 1px solid var(--line);
+        background: var(--bg);
+        color: var(--ink);
+        min-height: 42px;
+        max-height: 180px;
+      }
+      textarea:focus {
+        outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+        outline-offset: -1px;
+      }
+      .hint {
+        max-width: 820px;
+        margin: 7px auto 0;
+        font-size: 11.5px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Stellar <span>— mise en service</span></h1>
+      <div id="status">
+        <span class="pill"
+          ><span class="dot" id="dot-link"></span><span id="lbl-link">flux</span></span
+        >
+        <span class="pill"
+          ><span class="dot" id="dot-broker"></span><span id="lbl-broker">broker</span></span
+        >
+        <span class="pill"
+          ><span class="dot" id="dot-core"></span><span id="lbl-core">core</span></span
+        >
+        <span class="pill"
+          ><span class="dot" id="dot-env"></span><span id="lbl-env">.env</span></span
+        >
+      </div>
+    </header>
+
+    <main><div id="log"></div></main>
+
+    <footer>
+      <form id="form">
+        <textarea
+          id="text"
+          rows="1"
+          placeholder="Décris ta machine et ce que tu veux brancher aujourd'hui…"
+          autofocus
+        ></textarea>
+        <button class="primary" id="send" type="submit">Envoyer</button>
+      </form>
+      <div class="hint">
+        Entrée pour envoyer, Maj+Entrée pour un retour à la ligne. Les commandes et les écritures de
+        fichier demandent ton accord avant de s'exécuter.
+      </div>
+    </footer>
+
+    <script>
+      (function () {
+        'use strict';
+
+        var log = document.getElementById('log');
+        var form = document.getElementById('form');
+        var input = document.getElementById('text');
+        var send = document.getElementById('send');
+        var cards = Object.create(null);
+        var busy = false;
+
+        // ── rendu ────────────────────────────────────────────────────────────
+
+        function escapeHtml(text) {
+          return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+        }
+
+        /*
+          Markdown minimal, à la main : blocs de code, listes, gras, code inline.
+          Pas de bibliothèque — l'assistant écrit du markdown simple, et une page
+          de setup n'a pas à embarquer un parseur pour trois balises.
+        */
+        function renderMarkdown(text) {
+          var safe = escapeHtml(text);
+          var blocks = safe.split(/```/);
+          var out = '';
+          for (var i = 0; i < blocks.length; i++) {
+            if (i % 2 === 1) {
+              out += '<pre><code>' + blocks[i].replace(/^[a-z]*\n/i, '') + '</code></pre>';
+              continue;
+            }
+            out += renderProse(blocks[i]);
+          }
+          return out;
+        }
+
+        function renderInline(text) {
+          return text
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        }
+
+        function renderProse(text) {
+          var out = '';
+          var paragraphs = text.split(/\n{2,}/);
+          for (var i = 0; i < paragraphs.length; i++) {
+            var lines = paragraphs[i].split('\n').filter(function (line) {
+              return line.trim().length > 0;
+            });
+            if (lines.length === 0) continue;
+            var isList = lines.every(function (line) {
+              return /^\s*(?:[-*]|\d+\.)\s+/.test(line);
+            });
+            if (isList) {
+              out += '<ul>';
+              for (var j = 0; j < lines.length; j++) {
+                out +=
+                  '<li>' + renderInline(lines[j].replace(/^\s*(?:[-*]|\d+\.)\s+/, '')) + '</li>';
+              }
+              out += '</ul>';
+            } else {
+              out += '<p>' + renderInline(lines.join('<br />')) + '</p>';
+            }
+          }
+          return out;
+        }
+
+        function atBottom() {
+          var main = document.querySelector('main');
+          return main.scrollHeight - main.scrollTop - main.clientHeight < 90;
+        }
+
+        function scroll() {
+          var main = document.querySelector('main');
+          main.scrollTop = main.scrollHeight;
+        }
+
+        function append(node) {
+          var stick = atBottom();
+          log.appendChild(node);
+          if (stick) scroll();
+        }
+
+        function message(who, label, text, markdown) {
+          var wrap = document.createElement('div');
+          wrap.className = 'msg ' + who;
+          var head = document.createElement('div');
+          head.className = 'who';
+          head.textContent = label;
+          var bubble = document.createElement('div');
+          bubble.className = 'bubble';
+          if (markdown) bubble.innerHTML = renderMarkdown(text);
+          else bubble.textContent = text;
+          wrap.appendChild(head);
+          wrap.appendChild(bubble);
+          append(wrap);
+        }
+
+        // ── cartes d'approbation ─────────────────────────────────────────────
+
+        function approvalCard(request) {
+          if (cards[request.requestId]) return;
+
+          var card = document.createElement('div');
+          card.className = 'card';
+
+          var head = document.createElement('div');
+          head.className = 'head';
+          var tool = document.createElement('span');
+          tool.className = 'tool';
+          tool.textContent = request.tool;
+          var summary = document.createElement('span');
+          summary.className = 'summary';
+          summary.textContent = request.summary;
+          head.appendChild(tool);
+          head.appendChild(summary);
+
+          var detail = document.createElement('pre');
+          detail.textContent = request.detail;
+
+          var actions = document.createElement('div');
+          actions.className = 'actions';
+          var allow = document.createElement('button');
+          allow.className = 'primary';
+          allow.type = 'button';
+          allow.textContent = 'Autoriser';
+          var deny = document.createElement('button');
+          deny.type = 'button';
+          deny.textContent = 'Refuser';
+          var verdict = document.createElement('span');
+          verdict.className = 'verdict';
+          actions.appendChild(allow);
+          actions.appendChild(deny);
+          actions.appendChild(verdict);
+
+          function decide(value) {
+            allow.disabled = true;
+            deny.disabled = true;
+            verdict.textContent = 'envoi…';
+            post('/approve', { requestId: request.requestId, allow: value }).catch(function (err) {
+              verdict.textContent = 'échec : ' + err.message;
+              allow.disabled = false;
+              deny.disabled = false;
+            });
+          }
+          allow.addEventListener('click', function () {
+            decide(true);
+          });
+          deny.addEventListener('click', function () {
+            decide(false);
+          });
+
+          card.appendChild(head);
+          card.appendChild(detail);
+          card.appendChild(actions);
+          cards[request.requestId] = { allow: allow, deny: deny, verdict: verdict };
+          append(card);
+        }
+
+        var VERDICTS = {
+          human: '',
+          timeout: ' (pas de réponse à temps)',
+          aborted: ' (tour abandonné)',
+          shutdown: ' (service arrêté)',
+          'session-closed': ' (session terminée)',
+        };
+
+        function resolveCard(event) {
+          var card = cards[event.requestId];
+          if (!card) return;
+          card.allow.disabled = true;
+          card.deny.disabled = true;
+          card.verdict.className = 'verdict ' + (event.allow ? 'allow' : 'deny');
+          card.verdict.textContent =
+            (event.allow ? 'Autorisé' : 'Refusé') + (VERDICTS[event.reason] || '');
+        }
+
+        // ── réseau ───────────────────────────────────────────────────────────
+
+        function post(path, body) {
+          return fetch(path, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(body),
+          }).then(function (res) {
+            if (res.ok) return res.json();
+            return res
+              .json()
+              .catch(function () {
+                return {};
+              })
+              .then(function (payload) {
+                throw new Error(payload.error || 'HTTP ' + res.status);
+              });
+          });
+        }
+
+        function setDot(id, on) {
+          document.getElementById(id).className = on ? 'dot on' : 'dot';
+        }
+
+        function pollStatus() {
+          fetch('/status')
+            .then(function (res) {
+              return res.json();
+            })
+            .then(function (status) {
+              setDot('dot-broker', status.broker);
+              setDot('dot-core', status.coreApi);
+              setDot('dot-env', status.env);
+              document.getElementById('lbl-broker').textContent = 'broker ' + status.ports.broker;
+              document.getElementById('lbl-core').textContent = 'core ' + status.ports.coreApi;
+            })
+            .catch(function () {
+              setDot('dot-broker', false);
+              setDot('dot-core', false);
+            });
+        }
+
+        function setBusy(value) {
+          busy = value;
+          send.disabled = value;
+          send.textContent = value ? '…' : 'Envoyer';
+        }
+
+        // ── flux d'événements ────────────────────────────────────────────────
+
+        var source = new EventSource('/events');
+        source.onopen = function () {
+          setDot('dot-link', true);
+        };
+        source.onerror = function () {
+          // EventSource reconnecte tout seul : on ne fait qu'éteindre le voyant.
+          setDot('dot-link', false);
+        };
+        source.onmessage = function (raw) {
+          var event = JSON.parse(raw.data);
+          if (event.type === 'hello') {
+            setDot('dot-link', true);
+            for (var i = 0; i < event.pending.length; i++) approvalCard(event.pending[i]);
+          } else if (event.type === 'user') {
+            message('user', 'toi', event.text, false);
+          } else if (event.type === 'assistant') {
+            message('assistant', 'assistant', event.text, true);
+          } else if (event.type === 'tool') {
+            message('note', '', event.tool + ' · ' + event.summary, false);
+          } else if (event.type === 'approval') {
+            approvalCard(event);
+          } else if (event.type === 'approval-resolved') {
+            resolveCard(event);
+          } else if (event.type === 'turn-end') {
+            setBusy(false);
+            if (event.isError)
+              message('error', 'erreur', event.errorReason || 'tour en échec', false);
+          } else if (event.type === 'error') {
+            setBusy(false);
+            message('error', 'erreur', event.message, false);
+          }
+        };
+
+        // ── saisie ───────────────────────────────────────────────────────────
+
+        input.addEventListener('input', function () {
+          input.style.height = 'auto';
+          input.style.height = Math.min(input.scrollHeight, 180) + 'px';
+        });
+        input.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            form.requestSubmit();
+          }
+        });
+
+        form.addEventListener('submit', function (event) {
+          event.preventDefault();
+          var text = input.value.trim();
+          if (text.length === 0 || busy) return;
+          input.value = '';
+          input.style.height = 'auto';
+          setBusy(true);
+          post('/message', { text: text }).catch(function (err) {
+            setBusy(false);
+            message('error', 'erreur', err.message, false);
+          });
+        });
+
+        pollStatus();
+        setInterval(pollStatus, 5000);
+      })();
+    </script>
+  </body>
+</html>
