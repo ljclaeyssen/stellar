@@ -3,6 +3,9 @@ packages:
   - apps/*
   - apps/drivers/*
   - apps/simulators/*
+# advisory modérée via @kud/androidtv-remote (cf. audit 2026-08-03)
+overrides:
+  protobufjs: ^7.6.5
 allowBuilds:
   better-sqlite3: true
   esbuild: true

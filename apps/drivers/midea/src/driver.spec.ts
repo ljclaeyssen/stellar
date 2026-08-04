@@ -344,8 +344,12 @@ describe('midea-driver contre le fake du wrapper (ADR-010 niveau 2)', () => {
   });
 
   it('jitter : les unités ne se synchronisent pas sur la même cadence', async () => {
+    // 8 tirages : comparer des SÉQUENCES, jamais des agrégats — la somme de
+    // 4 tirages dans [27..33] collisionne trop souvent (flake réel constaté :
+    // 120 === 120, pile la moyenne). Deux séquences de 8 tirages identiques
+    // ont une probabilité ~(1/7)^8 ≈ 2e-7 : négligeable.
     await vi.waitFor(() => {
-      expect(handle.units.every((unit) => unit.delays.length >= 4)).toBe(true);
+      expect(handle.units.every((unit) => unit.delays.length >= 8)).toBe(true);
     });
     const [salon, entree] = handle.units;
 
@@ -357,13 +361,11 @@ describe('midea-driver contre le fake du wrapper (ADR-010 niveau 2)', () => {
       }
     }
 
-    // Test tolérant : on n'exige pas que *chaque* délai diffère (deux tirages
-    // peuvent arrondir pareil sur 30 ms), mais que les deux unités ne suivent pas
-    // la même suite — sinon le jitter ne sert à rien.
-    const sum = (values: readonly number[]): number => values.reduce((a, b) => a + b, 0);
     expect(salon?.delays).toBeDefined();
     expect(entree?.delays).toBeDefined();
-    expect(sum(salon?.delays ?? [])).not.toBe(sum(entree?.delays ?? []));
+    expect([...(salon?.delays ?? [])].slice(0, 8)).not.toEqual(
+      [...(entree?.delays ?? [])].slice(0, 8),
+    );
   });
 
   it('anti-martèlement : une commande repousse le poll suivant d’une période complète', async () => {

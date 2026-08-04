@@ -10,14 +10,29 @@
 
 ---
 
-# P6 — Tempo + régulation (en cours, mode simulé)
+# P6 — Tempo + régulation (DoD simulé atteint le 2026-08-04)
 
-Deux chantiers : tempo-driver + sim (RTE OAuth + fallback opendata sans compte,
-wrap 6 h, bascule HP/HC à l'heure juste, DST) ; module régulation dans le core
-(`decide` pur + runtime, hystérésis ±0,4, politique Tempo, préchauffe HC,
-délestage avec réarmement, anti-court-cycle, causes lisibles sur chaque
-décision, **golden tests** journée type). DoD simulé : scénarios golden relus ;
-le DoD réel « une semaine d'autonomie » attendra le matériel.
+- [x] tempo-driver + sim : RTE OAuth + fallback opendata sans compte, wrap du
+      jour Tempo à 6 h, republication HP/HC à l'heure juste, DST Europe/Paris,
+      stale 2 cycles, verify sans secret ; smoke test sim + CLI réels (32 tests)
+- [x] régulation core : `decide` pur + runtime fin ; hystérésis ±0,4, modes
+      present/absent/nuit, politique Tempo (rouge HP → chaudière, préchauffe
+      02:00 HC, blanc HP/HC, bleu libre), délestage ordonné + réarmement
+      inverse, anti-court-cycle 5 min, fallback capteur stale → hors_gel,
+      driver offline → silence + alerte ; config/regulation.yaml zod strict
+- [x] **6 golden tests** journée type relisibles (01-journee-bleue …
+      06-driver-offline) + 12 tests d'intégration runtime sur broker (routage
+      ADR-008 prouvé, dedup, causes, échec d'ack)
+- [x] Correctif post-revue : un ack rejected/timeout part désormais AUSSI dans
+      l'événement regulation (`commandFailure`) — relisible dans le journal,
+      pas seulement dans les logs
+- [x] Flake résolu pour de bon : le test de jitter comparait des SOMMES de 4
+      tirages (collision fréquente) → comparaison de séquences de 8 ; 5 runs
+      complets de stress verts
+- [x] `check:p6` ; 309 tests au global
+- Notes : `evaluate()` publique non sérialisée avec les tours internes
+  (documenté — à surveiller quand le MCP P7 l'exposera) ; kVA réel et compte
+  RTE attendus côté humain (TODO_LJ).
 
 ---
 
