@@ -19,8 +19,14 @@ import { createSubscriptionRegistry } from './subscriptions.js';
  * MCP ajoute au core.
  *
  * Le monde : un faux driver de clim (`fakeclim`, qui acquitte) et un faux driver
- * d'ouvrants (`fakeouvrants`, qui publie une serrure et un volet et n'est *jamais*
+ * d'ouvrants (`fakeouvrants`, qui publie une serrure et un bouton et n'est *jamais*
  * censé recevoir quoi que ce soit — c'est la preuve du garde-fou).
+ *
+ * P9 : ce driver publiait aussi un volet, qui servait à démontrer le refus des
+ * kinds *réservés*. `cover` ayant reçu son contrat (`CoverValue`) et étant sorti de
+ * `AGENT_FORBIDDEN_KINDS`, la démonstration a été reportée sur `button` — un kind
+ * qui reste sans contrat de commande. Le pilotage d'un volet par l'agent est
+ * couvert, lui, par `p9-extensibilite.spec.ts`.
  */
 
 const logger: Logger = {
@@ -181,11 +187,11 @@ describe('serveur MCP du core', () => {
       ts: new Date().toISOString(),
     });
     await openingBus.publishState({
-      id: 'volet_salon',
+      id: 'bouton_entree',
       driver: OPENING_DRIVER,
-      kind: 'cover',
-      room: 'salon',
-      value: { position: 100 },
+      kind: 'button',
+      room: 'entree',
+      value: { pressed: false },
       ts: new Date().toISOString(),
     });
 
@@ -295,14 +301,15 @@ describe('serveur MCP du core', () => {
     expect(commandRows('serrure_entree')).toEqual([]);
   });
 
-  it('refuse aussi les kinds réservés tant qu’aucun contrat ne les définit', async () => {
-    const result = await call('send_command', { target: 'volet_salon', action: 'open' });
+  it('refuse aussi les kinds événementiels, qui ne sont pas des cibles', async () => {
+    const result = await call('send_command', { target: 'bouton_entree', action: 'press' });
 
     expect(result.isError).toBe(true);
     expect(result.data['code']).toBe('forbidden_kind');
+    expect(result.data['kind']).toBe('button');
     await new Promise((resolve) => setTimeout(resolve, 200));
     expect(openingCommands).toEqual([]);
-    expect(commandRows('volet_salon')).toEqual([]);
+    expect(commandRows('bouton_entree')).toEqual([]);
   });
 
   it('refuse une entité absente du miroir', async () => {

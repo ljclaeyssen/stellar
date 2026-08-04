@@ -67,15 +67,17 @@ const SERVER_VERSION = '0.1.0';
  * - `lock` : interdit absolu (spec §4 n°1, §11, CLAUDE.md) — une serrure ne se
  *   pilote pas depuis un modèle non déterministe, quelles que soient les
  *   circonstances ;
- * - `cover`, `button`, `doorbell` : réservés futur (contrats §7). Tant qu'aucun
- *   driver ne les publie, leur sémantique de commande n'est pas définie ; laisser
- *   l'agent tirer dessus « au cas où » reviendrait à valider un contrat qui
- *   n'existe pas. Le jour où ils arrivent, on retire la ligne **avec** l'ADR qui
- *   décrit ce que l'agent a le droit d'en faire.
+ * - `button`, `doorbell` : **événementiels**, pas des cibles. Ce sont des sources
+ *   (`home/event/…`) : leur envoyer une commande n'a aucun sens, et le refus dit
+ *   au modèle qu'il s'est trompé de geste plutôt que de le laisser attendre un ack.
+ *
+ * P9 : `cover` **n'y figure plus**. La spec n'interdit à l'agent que la sécurité
+ * (`lock`, alarmes, incendie) ; un volet est un actionneur de confort ordinaire, et
+ * son contrat de commande existe désormais (`CoverValue`, contrats §7). Le laisser
+ * interdit reviendrait à inventer un interdit que la spec ne pose pas.
  */
 export const AGENT_FORBIDDEN_KINDS: ReadonlySet<Kind> = new Set<Kind>([
   KindEnum.enum.lock,
-  KindEnum.enum.cover,
   KindEnum.enum.button,
   KindEnum.enum.doorbell,
 ]);
@@ -235,7 +237,7 @@ export function createMcpServer(deps: McpToolDeps, subscriptions: SubscriptionRe
     {
       title: 'Commander une entité',
       description:
-        "Envoie une commande à une entité et attend son acquittement (5 s). Le driver destinataire est résolu par le miroir ; l'émetteur est toujours 'agent'. Refusé pour les entités inconnues et pour les kinds de sécurité (lock) ou réservés (cover, button, doorbell).",
+        "Envoie une commande à une entité et attend son acquittement (5 s). Le driver destinataire est résolu par le miroir ; l'émetteur est toujours 'agent'. Refusé pour les entités inconnues, pour les kinds de sécurité (lock) et pour les kinds événementiels, qui ne se commandent pas (button, doorbell).",
       inputSchema: sendCommandShape,
     },
     instrument(

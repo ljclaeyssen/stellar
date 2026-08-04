@@ -22,9 +22,11 @@ import { healthTopic, stateTopic, type Entity, type Kind } from '@stellar/contra
  *    message `home/…`, et un `ON` brut y produirait un « payload illisible » à
  *    chaque commande vocale.
  *
- * Les kinds réservés (`cover`, `button`, `doorbell`) et `lock` ne sont **jamais**
- * exposés : la voix ne pilote pas la sécurité (spec §4 n°1), et un contrat de
- * commande qui n'existe pas encore ne se publie pas « au cas où ».
+ * Les kinds réservés (`button`, `doorbell`) et `lock` ne sont **jamais** exposés :
+ * la voix ne pilote pas la sécurité (spec §4 n°1), et un contrat de commande qui
+ * n'existe pas encore ne se publie pas « au cas où ». `cover`, lui, a reçu son
+ * contrat en P9 (`CoverValue`) : un volet est un actionneur de confort, il a sa
+ * place dans HA au même titre qu'une lampe.
  */
 
 /** Préfixe de découverte par défaut de HA (`homeassistant/<component>/<objectId>/config`). */
@@ -44,6 +46,7 @@ export const HA_FIELD = {
   brightness: 'brightness',
   mode: 'mode',
   temperature: 'temperature',
+  position: 'position',
 } as const;
 
 /** Payloads booléens : du JSON valide, cf. parti pris n°3. */
@@ -65,7 +68,18 @@ const MANUFACTURER = 'Stellar';
 const MODEL = 'bus MQTT';
 
 /** Composants HA que le pont sait produire. */
-export type HaComponent = 'light' | 'switch' | 'sensor' | 'binary_sensor' | 'climate';
+export type HaComponent = 'light' | 'switch' | 'sensor' | 'binary_sensor' | 'climate' | 'cover';
+
+/** Bornes de course d'un `cover` HA — notre `CoverValue.position` est déjà en % (0 fermé). */
+export const HA_COVER_POSITION_CLOSED = 0;
+export const HA_COVER_POSITION_OPEN = 100;
+
+/** Verbes d'un `cover` HA, en JSON comme tout ce qui transite sous `home/` (parti pris n°3). */
+export const HA_COVER_PAYLOAD = {
+  open: '"open"',
+  close: '"close"',
+  stop: '"stop"',
+} as const;
 
 export interface HaDiscovery {
   component: HaComponent;
@@ -260,7 +274,37 @@ const mappers = {
       icon: 'mdi:weather-partly-cloudy',
     }),
 
-  cover: null,
+  // Volets (P9). Deux canaux, comme le contrat : le topic principal porte les
+  // verbes (`open`/`close`/`stop`), le topic `…/position` la consigne chiffrée.
+  // `state` n'est publié par le driver que pendant le mouvement : au repos, la
+  // position suffit à dire ouvert/fermé — d'où le `default(…)` du template plutôt
+  // qu'une config qui exigerait un champ optionnel.
+  cover: (ctx) => ({
+    component: 'cover',
+    config: {
+      ...ctx.base,
+      device_class: 'shutter',
+      state_topic: ctx.state,
+      value_template:
+        '{{ value_json.value.state | default(' +
+        `'open' if value_json.value.position > ${HA_COVER_POSITION_CLOSED} else 'closed') }}`,
+      position_topic: ctx.state,
+      position_template: '{{ value_json.value.position | round(0) }}',
+      position_closed: HA_COVER_POSITION_CLOSED,
+      position_open: HA_COVER_POSITION_OPEN,
+      command_topic: ctx.cmd(),
+      payload_open: HA_COVER_PAYLOAD.open,
+      payload_close: HA_COVER_PAYLOAD.close,
+      payload_stop: HA_COVER_PAYLOAD.stop,
+      set_position_topic: ctx.cmd(HA_FIELD.position),
+      // Rend `30` — un nombre JSON, cf. parti pris n°3.
+      set_position_template: '{{ position }}',
+      // Le retour d'état vient toujours du bus : HA ne suppose jamais le résultat
+      // d'une commande (un volet peut être bloqué, ou piloté à la télécommande).
+      optimistic: false,
+    },
+  }),
+
   button: null,
   doorbell: null,
   lock: null,

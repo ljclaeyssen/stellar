@@ -53,6 +53,38 @@ export const TempoValue = z.object({
 /** affiné en P3 (station Netatmo) */
 export const WeatherValue = z.record(z.unknown());
 
+/**
+ * Mouvement d'un volet — vocabulaire commun à tous les ouvrants motorisés
+ * (Zigbee, moteur filaire piloté par une prise, simulateur).
+ *
+ * `open`/`closed` décrivent un volet **au repos** aux extrémités de sa course,
+ * `stopped` un volet au repos entre les deux ; `opening`/`closing` sont les états
+ * transitoires. C'est aussi le vocabulaire de Home Assistant, ce qui évite au pont
+ * de traduire (spec §10 : aucune logique côté HA).
+ */
+export const CoverState = z.enum(['open', 'closed', 'opening', 'closing', 'stopped']);
+export type CoverState = z.infer<typeof CoverState>;
+
+/**
+ * `cover` (spec §7, « une famille d'objets = une PR partagée ») — volets, stores,
+ * rideaux motorisés.
+ *
+ * `position` est la **seule** donnée obligatoire, en pourcentage d'ouverture :
+ * **0 = fermé, 100 = ouvert**, dans le sens de la convention Home Assistant et de
+ * Zigbee2MQTT. Un volet sans retour de position n'existe pas dans ce contrat : le
+ * driver qui n'en a pas doit publier ce qu'il croit (0 ou 100), ce qui reste plus
+ * exploitable qu'une absence.
+ *
+ * `state` est optionnel parce qu'il est **dérivable** de la position au repos ; il
+ * n'ajoute d'information que pendant le mouvement (`opening`/`closing`), que seul
+ * le driver connaît.
+ */
+export const CoverValue = z.object({
+  /** % d'ouverture — 0 fermé, 100 ouvert. */
+  position: z.number().min(0).max(100),
+  state: CoverState.optional(),
+});
+
 /** kinds réservés futur : aucune contrainte tant que le besoin n'existe pas */
 const ReservedValue = z.unknown();
 
@@ -72,7 +104,7 @@ export const valueSchemas = {
   media: MediaValue,
   tempo: TempoValue,
   weather: WeatherValue,
-  cover: ReservedValue,
+  cover: CoverValue,
   button: ReservedValue,
   doorbell: ReservedValue,
   lock: ReservedValue,
@@ -88,3 +120,4 @@ export type PlugValue = z.infer<typeof PlugValue>;
 export type MediaValue = z.infer<typeof MediaValue>;
 export type TempoValue = z.infer<typeof TempoValue>;
 export type WeatherValue = z.infer<typeof WeatherValue>;
+export type CoverValue = z.infer<typeof CoverValue>;

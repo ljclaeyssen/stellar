@@ -4,6 +4,7 @@ import {
   BusEvent,
   ClimateValue,
   Command,
+  CoverValue,
   Health,
   HumidityValue,
   LightValue,
@@ -121,6 +122,44 @@ describe('Entity + value par kind', () => {
     const parsed = PowerValue.parse({ va: 1234, indexBase: 42, indexHC: 7, papp: 1234 });
     expect(parsed).toMatchObject({ va: 1234, indexHC: 7, papp: 1234 });
     expect(PowerValue.safeParse({ va: -1 }).success).toBe(false);
+  });
+
+  it('accepte cover : position 0–100, state optionnel', () => {
+    expect(CoverValue.safeParse({ position: 0 }).success).toBe(true);
+    expect(CoverValue.safeParse({ position: 100 }).success).toBe(true);
+    expect(CoverValue.safeParse({ position: 42.5, state: 'stopped' }).success).toBe(true);
+    expect(CoverValue.safeParse({ position: 30, state: 'closing' }).success).toBe(true);
+  });
+
+  it('rejette un cover hors bornes, sans position ou au state inventé', () => {
+    expect(CoverValue.safeParse({ position: -1 }).success).toBe(false);
+    expect(CoverValue.safeParse({ position: 101 }).success).toBe(false);
+    expect(CoverValue.safeParse({}).success).toBe(false);
+    expect(CoverValue.safeParse({ position: '30' }).success).toBe(false);
+    expect(CoverValue.safeParse({ position: 30, state: 'entrouvert' }).success).toBe(false);
+  });
+
+  it('une entité cover est validée par son schéma de kind (plus de value libre)', () => {
+    const volet = {
+      id: 'volet_salon',
+      driver: 'fake-shutter',
+      kind: 'cover',
+      room: 'salon',
+      value: { position: 100, state: 'open' },
+      ts: '2026-11-14T06:12:03Z',
+    };
+    expect(safeParseEntity(volet).success).toBe(true);
+    // Le contrat existe désormais : un value fantaisiste ne passe plus.
+    expect(safeParseEntity({ ...volet, value: { ouvert: true } }).success).toBe(false);
+
+    const entity = parseEntity(volet);
+    expect(isKind(entity, 'cover')).toBe(true);
+    if (isKind(entity, 'cover')) {
+      // pas de cast : `value` est typé CoverValue dans cette branche
+      expect(entity.value.position).toBe(100);
+      expect(entity.value.state).toBe('open');
+    }
+    expect(valueOf(entity, 'cover')?.position).toBe(100);
   });
 
   it('accepte tempo et rejette une couleur inconnue', () => {

@@ -1,5 +1,10 @@
 import type { ClimateMode, Kind } from '@stellar/contracts';
-import { HA_COMMAND_ROOT, HA_FIELD } from './discovery.js';
+import {
+  HA_COMMAND_ROOT,
+  HA_COVER_POSITION_CLOSED,
+  HA_COVER_POSITION_OPEN,
+  HA_FIELD,
+} from './discovery.js';
 
 /**
  * Traduction **commande HA → `Command` du bus** (P8, spec §10 et §12).
@@ -80,6 +85,17 @@ const CLIMATE_MODES: Record<string, { power: boolean; mode?: ClimateMode }> = {
   fan_only: { power: true, mode: 'fan' },
 };
 
+/**
+ * Verbes d'un `cover` HA → `params` du contrat. Le driver reçoit une intention
+ * (`open`), jamais une position déduite ici : c'est lui qui connaît la course
+ * réelle de son volet.
+ */
+const COVER_ACTIONS: Record<string, 'open' | 'close' | 'stop'> = {
+  open: 'open',
+  close: 'close',
+  stop: 'stop',
+};
+
 /** Bornes de plausibilité d'une consigne : au-delà, le payload est une erreur. */
 const TARGET_TEMP_MIN = 5;
 const TARGET_TEMP_MAX = 35;
@@ -129,6 +145,22 @@ export function translateHaCommand(
     if (field === HA_FIELD.temperature) {
       const targetTemp = asNumber(raw, TARGET_TEMP_MIN, TARGET_TEMP_MAX);
       return targetTemp === undefined ? null : { action: 'set', params: { targetTemp } };
+    }
+    return null;
+  }
+
+  if (kind === 'cover') {
+    if (field === null) {
+      const value = parseJson(raw);
+      if (typeof value !== 'string') return null;
+      const action = COVER_ACTIONS[value];
+      return action === undefined ? null : { action: 'set', params: { action } };
+    }
+    if (field === HA_FIELD.position) {
+      const position = asNumber(raw, HA_COVER_POSITION_CLOSED, HA_COVER_POSITION_OPEN);
+      return position === undefined
+        ? null
+        : { action: 'set', params: { position: Math.round(position) } };
     }
     return null;
   }
