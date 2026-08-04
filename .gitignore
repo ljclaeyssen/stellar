@@ -29,6 +29,11 @@ config/*
 
 # runtime
 *.log
+# Données produites par les services quand ils tournent depuis la racine du dépôt
+# (WorkingDirectory=/opt/stellar) : journal SQLite du core, budget quotidien de
+# l'agent. Les .gitignore locaux d'apps/core et apps/agent couvrent le cas où un
+# service tourne depuis son propre dossier.
+data/
 
 # IDE / OS
 .idea/

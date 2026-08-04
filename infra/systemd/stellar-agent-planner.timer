@@ -1,0 +1,15 @@
+[Unit]
+Description=Stellar — déclenche le planner du matin à 7 h (spec §11)
+
+[Timer]
+# Heure locale de la machine (Europe/Paris) : le brief suit le réveil, pas UTC.
+OnCalendar=*-*-* 07:00:00
+# Machine éteinte à 7 h (coupure de courant, maintenance) : le brief part au retour
+# plutôt que d'être sauté — une annonce en retard vaut mieux qu'une annonce perdue.
+Persistent=true
+# Étale le déclenchement : rien ici n'est à la seconde près.
+RandomizedDelaySec=120
+Unit=stellar-agent-planner.service
+
+[Install]
+WantedBy=timers.target

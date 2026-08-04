@@ -1,0 +1,10 @@
+{
+  // Émission vers `dist/` — les specs en sont exclues (cf. tsconfig.json).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "noEmit": false
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.spec.ts"]
+}

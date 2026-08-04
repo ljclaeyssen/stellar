@@ -1,0 +1,30 @@
+{
+  "name": "@stellar/agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "stellar-agent": "./dist/main.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.220",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@stellar/bus": "workspace:*",
+    "@stellar/contracts": "workspace:*",
+    "yaml": "^2.9.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@stellar/test-utils": "workspace:*",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.0"
+  }
+}

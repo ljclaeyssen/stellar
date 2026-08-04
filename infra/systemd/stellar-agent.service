@@ -1,0 +1,27 @@
+[Unit]
+Description=Stellar agent — sessions éphémères Claude Agent SDK (prise HTTP loopback)
+Documentation=file:/opt/stellar/docs/SPEC.md
+After=network-online.target stellar-core.service
+Wants=network-online.target
+# Pas de rate-limit de redémarrage : le service doit toujours finir par revenir.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=stellar
+WorkingDirectory=/opt/stellar
+# ANTHROPIC_API_KEY=… (secret → fichier root:stellar 0640, déchiffré par sops au déploiement)
+# AGENT_CORE_MCP_URL=http://127.0.0.1:8851/mcp
+# AGENT_PORT=8852
+EnvironmentFile=/etc/stellar/stellar-agent.env
+ExecStart=/usr/bin/node /opt/stellar/apps/agent/dist/main.js run
+# spec §14 : restart=always.
+Restart=always
+RestartSec=5
+# Logs JSON sur stdout → journald (spec §14).
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=stellar-agent
+
+[Install]
+WantedBy=multi-user.target

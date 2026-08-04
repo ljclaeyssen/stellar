@@ -1,0 +1,3 @@
+# Cumul de budget quotidien (AGENT_USAGE_DIR, défaut ./data/agent-usage-<date>.json).
+# Même convention que le journal SQLite d'apps/core.
+data/

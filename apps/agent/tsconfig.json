@@ -1,0 +1,16 @@
+{
+  // Projet de *lint et de typecheck* : il revendique tout `src`, specs comprises
+  // (même scission que `apps/core` et `apps/drivers/*`, cf. eslint.config.js).
+  //
+  // Différence assumée avec les autres packages : **pas de `rootDir` ici**. Les
+  // specs du planner montent un vrai core (`apps/core/src/core.ts`) pour parler au
+  // vrai serveur MCP — un import hors de `src` que `rootDir` refuserait (TS6059).
+  // `rootDir` n'a de sens que pour l'émission : il vit dans `tsconfig.build.json`,
+  // qui exclut justement les specs.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "noEmit": true
+  },
+  "include": ["src"]
+}

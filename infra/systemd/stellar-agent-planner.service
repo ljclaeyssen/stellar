@@ -1,0 +1,18 @@
+[Unit]
+Description=Stellar — planner du matin (un tour d'agent, puis sortie)
+Documentation=file:/opt/stellar/docs/SPEC.md
+After=network-online.target stellar-core.service
+Wants=network-online.target
+# Le brief n'a aucun sens si le core (donc le serveur MCP) n'est pas là.
+Requires=stellar-core.service
+
+[Service]
+# Oneshot : c'est une session éphémère, pas un service permanent (spec §11).
+Type=oneshot
+User=stellar
+WorkingDirectory=/opt/stellar
+EnvironmentFile=/etc/stellar/stellar-agent.env
+ExecStart=/usr/bin/node /opt/stellar/apps/agent/dist/main.js planner
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=stellar-agent-planner
