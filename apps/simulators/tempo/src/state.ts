@@ -76,7 +76,7 @@ export interface Templates {
  * sont substitués, tout le reste est repris tel quel.
  */
 export function loadTemplates(): Templates {
-  const token = readFixture('rte/token.json');
+  const token = readFixture('rte/oauth-response.json');
   const calendars = readFixture('rte/tempo_like_calendars.json');
   const jourTempo = readFixture('opendata/jour-tempo.json');
 
