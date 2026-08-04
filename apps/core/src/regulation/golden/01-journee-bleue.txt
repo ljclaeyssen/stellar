@@ -1,0 +1,162 @@
+# scénario : journée bleue nominale
+# Une journée sans histoire : la nuit, le réveil, le départ au travail, le retour.
+# Elle exerce la bascule nuit/jour, la temporisation de présence et l'hystérésis
+# dans les deux sens — plus la non-émission de commande quand rien ne change.
+# config : hystérésis 0.4 °C · nuit 22:30→06:30 ·
+#          anti-court-cycle 5 min · présence 30 min ·
+#          délestage 9000/1000/7000 VA [clim_entree, clim_chambre, clim_salon]
+#          préchauffe dès 02:00 (+1 °C)
+# pas de 60 min · 24 pas · fuseau Europe/Paris
+
+2026-01-15 00:00 (jeu) · couleur bleu→bleu · HC · 900 VA
+  salon     18.2 °C (temp_salon) · nuit · consigne 18.0 · pac
+  entree    17.6 °C (temp_entree) · nuit · consigne 17.5 · pac
+  chambre   18.1 °C (temp_chambre) · nuit · consigne 18.0 · pac
+    → salon/central_consigne : jour bleu HC → clim_salon chauffe salon, chauffage central parqué au hors-gel 8.0 °C
+      cmd thermostat_maison set {"targetTemp":8}
+
+2026-01-15 01:00 (jeu) · couleur bleu→bleu · HC · 900 VA
+  salon     17.5 °C (temp_salon) · nuit · consigne 18.0 · pac
+  entree    17.4 °C (temp_entree) · nuit · consigne 17.5 · pac
+  chambre   17.8 °C (temp_chambre) · nuit · consigne 18.0 · pac
+    → salon/pac_marche : 17.5 °C < 17.6 °C (consigne 18.0 ± 0.4 (mode nuit)) · jour bleu HC → marche de clim_salon
+      cmd clim_salon set {"power":true,"mode":"heat","targetTemp":18}
+
+2026-01-15 02:00 (jeu) · couleur bleu→bleu · HC · 900 VA
+  salon     17.9 °C (temp_salon) · nuit · consigne 18.0 · pac
+  entree    17.0 °C (temp_entree) · nuit · consigne 17.5 · pac
+  chambre   17.5 °C (temp_chambre) · nuit · consigne 18.0 · pac
+    → entree/pac_marche : 17.0 °C < 17.1 °C (consigne 17.5 ± 0.4 (mode nuit)) · jour bleu HC → marche de clim_entree
+      cmd clim_entree set {"power":true,"mode":"heat","targetTemp":17.5}
+    → chambre/pac_marche : 17.5 °C < 17.6 °C (consigne 18.0 ± 0.4 (mode nuit)) · jour bleu HC → marche de clim_chambre
+      cmd clim_chambre set {"power":true,"mode":"heat","targetTemp":18}
+
+2026-01-15 03:00 (jeu) · couleur bleu→bleu · HC · 900 VA
+  salon     18.3 °C (temp_salon) · nuit · consigne 18.0 · pac
+  entree    17.3 °C (temp_entree) · nuit · consigne 17.5 · pac
+  chambre   17.9 °C (temp_chambre) · nuit · consigne 18.0 · pac
+
+2026-01-15 04:00 (jeu) · couleur bleu→bleu · HC · 900 VA
+  salon     18.6 °C (temp_salon) · nuit · consigne 18.0 · pac
+  entree    17.6 °C (temp_entree) · nuit · consigne 17.5 · pac
+  chambre   18.2 °C (temp_chambre) · nuit · consigne 18.0 · pac
+    → salon/pac_arret : 18.6 °C > 18.4 °C (consigne 18.0 ± 0.4 (mode nuit)) · jour bleu HC → arrêt de clim_salon
+      cmd clim_salon set {"power":false}
+
+2026-01-15 05:00 (jeu) · couleur bleu→bleu · HC · 900 VA
+  salon     18.2 °C (temp_salon) · nuit · consigne 18.0 · pac
+  entree    17.4 °C (temp_entree) · nuit · consigne 17.5 · pac
+  chambre   18.4 °C (temp_chambre) · nuit · consigne 18.0 · pac
+
+2026-01-15 06:00 (jeu) · couleur bleu→bleu · HP · 900 VA
+  salon     17.9 °C (temp_salon) · nuit · consigne 18.0 · pac
+  entree    17.1 °C (temp_entree) · nuit · consigne 17.5 · pac
+  chambre   18.1 °C (temp_chambre) · nuit · consigne 18.0 · pac
+
+>>> réveil : le capteur de présence du salon passe à vrai
+2026-01-15 07:00 (jeu) · couleur bleu→bleu · HP · 900 VA
+  salon     17.8 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    16.9 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   17.9 °C (temp_chambre) · present · consigne 19.5 · pac
+    → salon/pac_marche : 17.8 °C < 20.1 °C (consigne 20.5 ± 0.4 (mode present)) · jour bleu HP → marche de clim_salon
+      cmd clim_salon set {"power":true,"mode":"heat","targetTemp":20.5}
+    → entree/pac_consigne : 16.9 °C dans la bande, consigne 19.0 ± 0.4 (mode present) · jour bleu HP → consigne 19.0 °C sur clim_entree
+      cmd clim_entree set {"mode":"heat","targetTemp":19}
+    → chambre/pac_consigne : 17.9 °C dans la bande, consigne 19.5 ± 0.4 (mode present) · jour bleu HP → consigne 19.5 °C sur clim_chambre
+      cmd clim_chambre set {"mode":"heat","targetTemp":19.5}
+
+2026-01-15 08:00 (jeu) · couleur bleu→bleu · HP · 900 VA
+  salon     19.5 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    17.6 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.5 °C (temp_chambre) · present · consigne 19.5 · pac
+
+>>> départ : présence fausse — la pièce reste « occupée » 30 min (temporisation)
+2026-01-15 09:00 (jeu) · couleur bleu→bleu · HP · 900 VA
+  salon     20.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.4 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   19.2 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 10:00 (jeu) · couleur bleu→bleu · HP · 900 VA
+  salon     20.6 °C (temp_salon) · absent · consigne 17.0 · pac
+  entree    18.9 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   19.7 °C (temp_chambre) · present · consigne 19.5 · pac
+    → salon/pac_arret : 20.6 °C > 17.4 °C (consigne 17.0 ± 0.4 (mode absent)) · jour bleu HP → arrêt de clim_salon
+      cmd clim_salon set {"power":false}
+
+2026-01-15 11:00 (jeu) · couleur bleu→bleu · HP · 900 VA
+  salon     20.2 °C (temp_salon) · absent · consigne 17.0 · pac
+  entree    19.2 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   19.9 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 12:00 (jeu) · couleur bleu→bleu · HP · 900 VA
+  salon     19.8 °C (temp_salon) · absent · consigne 17.0 · pac
+  entree    19.5 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   19.6 °C (temp_chambre) · present · consigne 19.5 · pac
+    → entree/pac_arret : 19.5 °C > 19.4 °C (consigne 19.0 ± 0.4 (mode present)) · jour bleu HP → arrêt de clim_entree
+      cmd clim_entree set {"power":false}
+
+2026-01-15 13:00 (jeu) · couleur bleu→bleu · HP · 900 VA
+  salon     19.5 °C (temp_salon) · absent · consigne 17.0 · pac
+  entree    19.3 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   19.3 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 14:00 (jeu) · couleur bleu→bleu · HP · 900 VA
+  salon     19.2 °C (temp_salon) · absent · consigne 17.0 · pac
+  entree    19.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   19.0 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 15:00 (jeu) · couleur bleu→bleu · HP · 900 VA
+  salon     18.9 °C (temp_salon) · absent · consigne 17.0 · pac
+  entree    18.7 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.8 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 16:00 (jeu) · couleur bleu→bleu · HP · 900 VA
+  salon     18.6 °C (temp_salon) · absent · consigne 17.0 · pac
+  entree    18.4 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+    → entree/pac_marche : 18.4 °C < 18.6 °C (consigne 19.0 ± 0.4 (mode present)) · jour bleu HP → marche de clim_entree
+      cmd clim_entree set {"power":true,"mode":"heat","targetTemp":19}
+
+2026-01-15 17:00 (jeu) · couleur bleu→bleu · HP · 900 VA
+  salon     18.3 °C (temp_salon) · absent · consigne 17.0 · pac
+  entree    18.2 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.4 °C (temp_chambre) · present · consigne 19.5 · pac
+
+>>> retour à la maison
+2026-01-15 18:00 (jeu) · couleur bleu→bleu · HP · 900 VA
+  salon     18.0 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.6 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.9 °C (temp_chambre) · present · consigne 19.5 · pac
+    → salon/pac_marche : 18.0 °C < 20.1 °C (consigne 20.5 ± 0.4 (mode present)) · jour bleu HP → marche de clim_salon
+      cmd clim_salon set {"power":true,"mode":"heat","targetTemp":20.5}
+
+2026-01-15 19:00 (jeu) · couleur bleu→bleu · HP · 900 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    19.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   19.4 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 20:00 (jeu) · couleur bleu→bleu · HP · 900 VA
+  salon     20.5 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    19.3 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   19.8 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 21:00 (jeu) · couleur bleu→bleu · HP · 900 VA
+  salon     20.6 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    19.5 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   20.0 °C (temp_chambre) · present · consigne 19.5 · pac
+    → entree/pac_arret : 19.5 °C > 19.4 °C (consigne 19.0 ± 0.4 (mode present)) · jour bleu HP → arrêt de clim_entree
+      cmd clim_entree set {"power":false}
+    → chambre/pac_arret : 20.0 °C > 19.9 °C (consigne 19.5 ± 0.4 (mode present)) · jour bleu HP → arrêt de clim_chambre
+      cmd clim_chambre set {"power":false}
+
+2026-01-15 22:00 (jeu) · couleur bleu→bleu · HC · 900 VA
+  salon     21.0 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    19.2 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   19.6 °C (temp_chambre) · present · consigne 19.5 · pac
+    → salon/pac_arret : 21.0 °C > 20.9 °C (consigne 20.5 ± 0.4 (mode present)) · jour bleu HC → arrêt de clim_salon
+      cmd clim_salon set {"power":false}
+
+2026-01-15 23:00 (jeu) · couleur bleu→bleu · HC · 900 VA
+  salon     20.6 °C (temp_salon) · nuit · consigne 18.0 · pac
+  entree    18.8 °C (temp_entree) · nuit · consigne 17.5 · pac
+  chambre   19.2 °C (temp_chambre) · nuit · consigne 18.0 · pac

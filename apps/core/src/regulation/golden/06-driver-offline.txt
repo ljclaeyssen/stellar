@@ -1,0 +1,61 @@
+# scénario : driver hors ligne : silence et alerte unique
+# Le process qui pilote les clims meurt (LWT « offline »). Aucune commande ne
+# part plus vers ses entités, même quand la température s'effondre : une alerte,
+# une seule, et le silence. Le salon garde sa chaudière ; les deux autres pièces
+# n'ont plus rien. Tout repart au retour du driver.
+# config : hystérésis 0.4 °C · nuit 22:30→06:30 ·
+#          anti-court-cycle 5 min · présence 30 min ·
+#          délestage 9000/1000/7000 VA [clim_entree, clim_chambre, clim_salon]
+#          préchauffe dès 02:00 (+1 °C)
+# pas de 30 min · 8 pas · fuseau Europe/Paris
+
+2026-01-15 09:00 (jeu) · couleur bleu→bleu · HP · 2600 VA
+  salon     19.6 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.8 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   19.3 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 09:30 (jeu) · couleur bleu→bleu · HP · 2600 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.6 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   19.1 °C (temp_chambre) · present · consigne 19.5 · pac
+
+>>> le driver des clims passe hors ligne (LWT)
+2026-01-15 10:00 (jeu) · couleur bleu→bleu · HP · 2600 VA
+  salon     19.0 °C (temp_salon) · present · consigne 20.5 · central
+  entree    18.2 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   18.7 °C (temp_chambre) · present · consigne 19.5 · aucun
+    ! salon/driver_offline : le driver de clim_salon est hors ligne → aucune commande vers cette entité
+    → salon/central_consigne : 19.0 °C, consigne 20.5 ± 0.4 (mode present) · jour bleu HP → consigne 20.5 °C au chauffage central
+      cmd thermostat_maison set {"targetTemp":20.5}
+    ! entree/driver_offline : le driver de clim_entree est hors ligne → aucune commande vers cette entité
+    ! entree/sans_actionneur : aucun actionneur disponible dans entree (pac : driver hors ligne, central : non déclaré)
+    ! chambre/driver_offline : le driver de clim_chambre est hors ligne → aucune commande vers cette entité
+    ! chambre/sans_actionneur : aucun actionneur disponible dans chambre (pac : driver hors ligne, central : non déclaré)
+
+2026-01-15 10:30 (jeu) · couleur bleu→bleu · HP · 2600 VA
+  salon     18.6 °C (temp_salon) · present · consigne 20.5 · central
+  entree    17.8 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   18.3 °C (temp_chambre) · present · consigne 19.5 · aucun
+
+2026-01-15 11:00 (jeu) · couleur bleu→bleu · HP · 2600 VA
+  salon     18.2 °C (temp_salon) · present · consigne 20.5 · central
+  entree    17.4 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   17.9 °C (temp_chambre) · present · consigne 19.5 · aucun
+
+2026-01-15 11:30 (jeu) · couleur bleu→bleu · HP · 2600 VA
+  salon     17.8 °C (temp_salon) · present · consigne 20.5 · central
+  entree    17.0 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   17.5 °C (temp_chambre) · present · consigne 19.5 · aucun
+
+>>> le driver redémarre
+2026-01-15 12:00 (jeu) · couleur bleu→bleu · HP · 2600 VA
+  salon     17.6 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    16.8 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   17.3 °C (temp_chambre) · present · consigne 19.5 · pac
+    → salon/central_consigne : jour bleu HP → clim_salon chauffe salon, chauffage central parqué au hors-gel 8.0 °C
+      cmd thermostat_maison set {"targetTemp":8}
+
+2026-01-15 12:30 (jeu) · couleur bleu→bleu · HP · 2600 VA
+  salon     17.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    16.6 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   17.1 °C (temp_chambre) · present · consigne 19.5 · pac

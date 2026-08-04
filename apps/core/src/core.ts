@@ -1,16 +1,32 @@
+import { existsSync } from 'node:fs';
 import type { Bus, Logger } from '@stellar/bus';
 import type { Kind } from '@stellar/contracts';
 import { startApiServer, type ApiServer } from './api.js';
 import { createJournal, journalEntryFromMessage, type Journal } from './journal.js';
 import { createMirror, type Mirror } from './mirror.js';
+import { createRegulation, loadRegulationConfig, type Regulation } from './regulation/index.js';
 import { createStaleWatcher, type StaleWatcher } from './stale.js';
 
 /**
- * Assemblage du core (miroir + journal + détection stale + API).
+ * Assemblage du core (miroir + journal + détection stale + API + régulation).
  *
  * Extrait de `main.ts` pour être montable en test : `main.ts` ne fait plus que
  * lire l'environnement, ouvrir le bus, appeler `createCore` et gérer l'arrêt.
  */
+
+export interface RegulationCoreOptions {
+  /** Chemin de `config/regulation.yaml`. */
+  configPath: string;
+  /** Défaut 60 s. */
+  evaluateIntervalMs?: number;
+  /**
+   * Par défaut : activée si le fichier existe. `true` exige le fichier (absent ⇒
+   * démarrage refusé), `false` la désactive même si le fichier est là.
+   */
+  enabled?: boolean;
+  /** Regroupement des réévaluations déclenchées par le miroir (tests). */
+  triggerDebounceMs?: number;
+}
 
 export interface CoreOptions {
   bus: Bus;
@@ -22,8 +38,10 @@ export interface CoreOptions {
   apiHost?: string;
   staleThresholds?: Partial<Record<Kind, number>>;
   staleCheckIntervalMs?: number;
-  /** Horloge de la détection stale (tests). */
+  /** Horloge de la détection stale et de la régulation (tests). */
   clock?: () => number;
+  /** Absent = pas de régulation du tout (tests unitaires du miroir/journal). */
+  regulation?: RegulationCoreOptions;
 }
 
 export interface Core {
@@ -32,6 +50,8 @@ export interface Core {
   staleWatcher: StaleWatcher;
   /** `null` quand `apiPort: null`. */
   api: ApiServer | null;
+  /** `null` quand la régulation est désactivée ou sans fichier de configuration. */
+  regulation: Regulation | null;
   close(): Promise<void>;
 }
 
@@ -57,6 +77,54 @@ const JOURNAL_FILTERS = [
   'home/discovery/+',
   'home/health/+',
 ];
+
+/**
+ * Montage de la régulation (P6).
+ *
+ * Politique de démarrage : une configuration **présente mais invalide** fait
+ * échouer le démarrage (mieux vaut pas de core qu'un core qui régule de travers) ;
+ * une configuration **absente** ne fait qu'éteindre la régulation — sauf si
+ * l'appelant l'a explicitement exigée.
+ */
+async function startRegulation(
+  options: CoreOptions,
+  mirror: Mirror,
+  bus: Bus,
+  logger: Logger,
+): Promise<Regulation | null> {
+  const settings = options.regulation;
+  if (!settings || settings.enabled === false) return null;
+
+  if (!existsSync(settings.configPath)) {
+    if (settings.enabled === true) {
+      throw new Error(`régulation exigée mais configuration absente : ${settings.configPath}`);
+    }
+    logger.info('régulation inactive : aucun fichier de configuration', {
+      path: settings.configPath,
+    });
+    return null;
+  }
+
+  const config = loadRegulationConfig(settings.configPath);
+  const regulation = await createRegulation({
+    mirror,
+    bus,
+    logger,
+    config,
+    ...(options.clock !== undefined ? { clock: options.clock } : {}),
+    ...(settings.evaluateIntervalMs !== undefined
+      ? { evaluateIntervalMs: settings.evaluateIntervalMs }
+      : {}),
+    ...(settings.triggerDebounceMs !== undefined
+      ? { triggerDebounceMs: settings.triggerDebounceMs }
+      : {}),
+  });
+  logger.info('régulation active', {
+    path: settings.configPath,
+    rooms: Object.keys(config.rooms),
+  });
+  return regulation;
+}
 
 export async function createCore(options: CoreOptions): Promise<Core> {
   const { bus, logger, journalPath } = options;
@@ -89,6 +157,8 @@ export async function createCore(options: CoreOptions): Promise<Core> {
     ...(options.clock !== undefined ? { clock: options.clock } : {}),
   });
 
+  const regulation = await startRegulation(options, mirror, bus, logger);
+
   const api =
     options.apiPort === null || options.apiPort === undefined
       ? null
@@ -104,7 +174,9 @@ export async function createCore(options: CoreOptions): Promise<Core> {
     journal,
     staleWatcher,
     api,
+    regulation,
     async close() {
+      regulation?.close();
       staleWatcher.close();
       await api?.close();
       // Le bus n'appartient pas au core : c'est l'appelant qui le ferme, et il doit

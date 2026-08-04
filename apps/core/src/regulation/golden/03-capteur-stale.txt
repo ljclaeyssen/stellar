@@ -1,0 +1,76 @@
+# scénario : capteur muet : repli sur la clim, puis hors-gel
+# Le capteur du salon se tait (pile morte, le core l'a marqué stale) : la
+# régulation bascule sur la température intérieure de la clim. Puis la clim se
+# tait à son tour — plus aucune mesure : consigne hors-gel, PAC à l'arrêt, alerte
+# une seule fois. Le retour du capteur remet tout en place. Les deux autres pièces
+# continuent normalement.
+# config : hystérésis 0.4 °C · nuit 22:30→06:30 ·
+#          anti-court-cycle 5 min · présence 30 min ·
+#          délestage 9000/1000/7000 VA [clim_entree, clim_chambre, clim_salon]
+#          préchauffe dès 02:00 (+1 °C)
+# pas de 30 min · 10 pas · fuseau Europe/Paris
+
+2026-01-15 08:00 (jeu) · couleur bleu→bleu · HP · 1400 VA
+  salon     19.0 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.6 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   19.0 °C (temp_chambre) · present · consigne 19.5 · pac
+    → salon/pac_marche : 19.0 °C < 20.1 °C (consigne 20.5 ± 0.4 (mode present)) · jour bleu HP → marche de clim_salon
+      cmd clim_salon set {"power":true,"mode":"heat","targetTemp":20.5}
+    → salon/central_consigne : jour bleu HP → clim_salon chauffe salon, chauffage central parqué au hors-gel 8.0 °C
+      cmd thermostat_maison set {"targetTemp":8}
+    → chambre/pac_marche : 19.0 °C < 19.1 °C (consigne 19.5 ± 0.4 (mode present)) · jour bleu HP → marche de clim_chambre
+      cmd clim_chambre set {"power":true,"mode":"heat","targetTemp":19.5}
+
+2026-01-15 08:30 (jeu) · couleur bleu→bleu · HP · 1400 VA
+  salon     18.8 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.5 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.9 °C (temp_chambre) · present · consigne 19.5 · pac
+    → entree/pac_marche : 18.5 °C < 18.6 °C (consigne 19.0 ± 0.4 (mode present)) · jour bleu HP → marche de clim_entree
+      cmd clim_entree set {"power":true,"mode":"heat","targetTemp":19}
+
+>>> temp_salon marqué stale → repli sur clim_salon.indoorTemp
+2026-01-15 09:00 (jeu) · couleur bleu→bleu · HP · 1400 VA
+  salon     18.8 °C (clim_salon.indoorTemp) · present · consigne 20.5 · pac
+  entree    18.4 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.8 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 09:30 (jeu) · couleur bleu→bleu · HP · 1400 VA
+  salon     18.8 °C (clim_salon.indoorTemp) · present · consigne 20.5 · pac
+  entree    18.6 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.9 °C (temp_chambre) · present · consigne 19.5 · pac
+
+>>> clim_salon devient muette à son tour → plus aucune mesure
+2026-01-15 10:00 (jeu) · couleur bleu→bleu · HP · 1400 VA
+  salon       —   (aucune mesure) · hors_gel · consigne 8.0 · aucun
+  entree    18.8 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   19.1 °C (temp_chambre) · present · consigne 19.5 · pac
+    ! salon/equipement_muet : clim_salon est muet (stale) → aucune commande vers cette entité
+    ! salon/capteur_indisponible : aucune mesure exploitable (temp_salon, clim_salon.indoorTemp) → consigne conservatrice hors-gel 8.0 °C
+
+2026-01-15 10:30 (jeu) · couleur bleu→bleu · HP · 1400 VA
+  salon       —   (aucune mesure) · hors_gel · consigne 8.0 · aucun
+  entree    19.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   19.3 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 11:00 (jeu) · couleur bleu→bleu · HP · 1400 VA
+  salon       —   (aucune mesure) · hors_gel · consigne 8.0 · aucun
+  entree    19.2 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   19.5 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 11:30 (jeu) · couleur bleu→bleu · HP · 1400 VA
+  salon       —   (aucune mesure) · hors_gel · consigne 8.0 · aucun
+  entree    19.3 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   19.7 °C (temp_chambre) · present · consigne 19.5 · pac
+
+>>> pile changée : temp_salon et clim_salon reparlent
+2026-01-15 12:00 (jeu) · couleur bleu→bleu · HP · 1400 VA
+  salon     18.8 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    19.4 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   19.9 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 12:30 (jeu) · couleur bleu→bleu · HP · 1400 VA
+  salon     19.0 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    19.4 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   20.0 °C (temp_chambre) · present · consigne 19.5 · pac
+    → chambre/pac_arret : 20.0 °C > 19.9 °C (consigne 19.5 ± 0.4 (mode present)) · jour bleu HP → arrêt de clim_chambre
+      cmd clim_chambre set {"power":false}

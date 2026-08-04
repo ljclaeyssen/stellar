@@ -1,0 +1,76 @@
+# scénario : anti-court-cycle : consigne oscillante, une bascule par 5 min
+# Un capteur qui oscille de part et d'autre de la bande morte toutes les deux
+# minutes (courant d'air, soleil rasant). Sans garde-fou le compresseur
+# basculerait à chaque pas ; ici il ne bascule jamais plus d'une fois par 5 min,
+# les autres tentatives étant tracées comme différées.
+# config : hystérésis 0.4 °C · nuit 22:30→06:30 ·
+#          anti-court-cycle 5 min · présence 30 min ·
+#          délestage 9000/1000/7000 VA []
+#          préchauffe dès 02:00 (+1 °C)
+# pas de 2 min · 16 pas · fuseau Europe/Paris
+
+2026-01-15 14:00 (jeu) · couleur bleu→bleu · HP · 2000 VA
+  salon     19.9 °C (temp_salon) · present · consigne 20.5 · pac
+    → salon/pac_marche : 19.9 °C < 20.1 °C (consigne 20.5 ± 0.4 (mode present)) · jour bleu HP → marche de clim_salon
+      cmd clim_salon set {"power":true,"mode":"heat","targetTemp":20.5}
+
+2026-01-15 14:02 (jeu) · couleur bleu→bleu · HP · 2000 VA
+  salon     21.2 °C (temp_salon) · present · consigne 20.5 · pac
+    · salon/arret_differe : 21.2 °C > 20.9 °C (consigne 20.5 ± 0.4 (mode present)) · jour bleu HP → arrêt de clim_salon — bascule différée : dernière bascule il y a 2 min < 5 min (anti-court-cycle)
+
+2026-01-15 14:04 (jeu) · couleur bleu→bleu · HP · 2000 VA
+  salon     19.9 °C (temp_salon) · present · consigne 20.5 · pac
+
+2026-01-15 14:06 (jeu) · couleur bleu→bleu · HP · 2000 VA
+  salon     21.2 °C (temp_salon) · present · consigne 20.5 · pac
+    → salon/pac_arret : 21.2 °C > 20.9 °C (consigne 20.5 ± 0.4 (mode present)) · jour bleu HP → arrêt de clim_salon
+      cmd clim_salon set {"power":false}
+
+2026-01-15 14:08 (jeu) · couleur bleu→bleu · HP · 2000 VA
+  salon     19.9 °C (temp_salon) · present · consigne 20.5 · pac
+    · salon/marche_differee : 19.9 °C < 20.1 °C (consigne 20.5 ± 0.4 (mode present)) · jour bleu HP → marche de clim_salon — bascule différée : dernière bascule il y a 2 min < 5 min (anti-court-cycle)
+
+2026-01-15 14:10 (jeu) · couleur bleu→bleu · HP · 2000 VA
+  salon     21.2 °C (temp_salon) · present · consigne 20.5 · pac
+
+2026-01-15 14:12 (jeu) · couleur bleu→bleu · HP · 2000 VA
+  salon     19.9 °C (temp_salon) · present · consigne 20.5 · pac
+    → salon/pac_marche : 19.9 °C < 20.1 °C (consigne 20.5 ± 0.4 (mode present)) · jour bleu HP → marche de clim_salon
+      cmd clim_salon set {"power":true,"mode":"heat","targetTemp":20.5}
+
+2026-01-15 14:14 (jeu) · couleur bleu→bleu · HP · 2000 VA
+  salon     21.2 °C (temp_salon) · present · consigne 20.5 · pac
+    · salon/arret_differe : 21.2 °C > 20.9 °C (consigne 20.5 ± 0.4 (mode present)) · jour bleu HP → arrêt de clim_salon — bascule différée : dernière bascule il y a 2 min < 5 min (anti-court-cycle)
+
+2026-01-15 14:16 (jeu) · couleur bleu→bleu · HP · 2000 VA
+  salon     19.9 °C (temp_salon) · present · consigne 20.5 · pac
+
+2026-01-15 14:18 (jeu) · couleur bleu→bleu · HP · 2000 VA
+  salon     21.2 °C (temp_salon) · present · consigne 20.5 · pac
+    → salon/pac_arret : 21.2 °C > 20.9 °C (consigne 20.5 ± 0.4 (mode present)) · jour bleu HP → arrêt de clim_salon
+      cmd clim_salon set {"power":false}
+
+2026-01-15 14:20 (jeu) · couleur bleu→bleu · HP · 2000 VA
+  salon     19.9 °C (temp_salon) · present · consigne 20.5 · pac
+    · salon/marche_differee : 19.9 °C < 20.1 °C (consigne 20.5 ± 0.4 (mode present)) · jour bleu HP → marche de clim_salon — bascule différée : dernière bascule il y a 2 min < 5 min (anti-court-cycle)
+
+2026-01-15 14:22 (jeu) · couleur bleu→bleu · HP · 2000 VA
+  salon     21.2 °C (temp_salon) · present · consigne 20.5 · pac
+
+2026-01-15 14:24 (jeu) · couleur bleu→bleu · HP · 2000 VA
+  salon     19.9 °C (temp_salon) · present · consigne 20.5 · pac
+    → salon/pac_marche : 19.9 °C < 20.1 °C (consigne 20.5 ± 0.4 (mode present)) · jour bleu HP → marche de clim_salon
+      cmd clim_salon set {"power":true,"mode":"heat","targetTemp":20.5}
+
+2026-01-15 14:26 (jeu) · couleur bleu→bleu · HP · 2000 VA
+  salon     21.2 °C (temp_salon) · present · consigne 20.5 · pac
+    · salon/arret_differe : 21.2 °C > 20.9 °C (consigne 20.5 ± 0.4 (mode present)) · jour bleu HP → arrêt de clim_salon — bascule différée : dernière bascule il y a 2 min < 5 min (anti-court-cycle)
+
+2026-01-15 14:28 (jeu) · couleur bleu→bleu · HP · 2000 VA
+  salon     21.2 °C (temp_salon) · present · consigne 20.5 · pac
+    · salon/arret_differe : 21.2 °C > 20.9 °C (consigne 20.5 ± 0.4 (mode present)) · jour bleu HP → arrêt de clim_salon — bascule différée : dernière bascule il y a 4 min < 5 min (anti-court-cycle)
+
+2026-01-15 14:30 (jeu) · couleur bleu→bleu · HP · 2000 VA
+  salon     21.2 °C (temp_salon) · present · consigne 20.5 · pac
+    → salon/pac_arret : 21.2 °C > 20.9 °C (consigne 20.5 ± 0.4 (mode present)) · jour bleu HP → arrêt de clim_salon
+      cmd clim_salon set {"power":false}

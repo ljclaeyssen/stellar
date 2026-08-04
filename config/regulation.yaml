@@ -1,0 +1,66 @@
+# Paramètres de la régulation déterministe (spec §10, phase P6).
+#
+# SEUL fichier que l'agent est autorisé à modifier en production, et uniquement
+# après confirmation humaine (spec §11) — jamais le code.
+#
+# Conventions : températures en °C, heures **locales** (Europe/Paris), puissances
+# en VA. Les identifiants (`temp_salon`, `clim_salon`…) sont des `entityId` du bus,
+# pas des noms de drivers : la régulation ne connaît que des entités et des pièces.
+
+rooms:
+  salon:
+    # Ordre = priorité. Si tous les capteurs listés sont stale, la régulation
+    # bascule automatiquement sur la température intérieure remontée par la clim
+    # de la pièce (`clim_salon.indoorTemp`), puis sur le hors-gel.
+    sensors: [temp_salon]
+    actuators: { pac: clim_salon, central: thermostat_maison }
+    # `hors_gel` a un double rôle sur une pièce qui déclare un `central` : c'est
+    # aussi la consigne à laquelle la chaudière est **parquée** quand la PAC
+    # suffit (sinon elle chaufferait en parallèle et « préférer le moins cher »
+    # ne servirait à rien). TODO_LJ : à remonter (16–17 ?) si des pièces non
+    # listées ici — cuisine, salle de bain — dépendent du chauffage central.
+    setpoints: { present: 20.5, absent: 17, nuit: 18, hors_gel: 8 }
+  entree:
+    sensors: [temp_entree]
+    # Pas de `central` : les jours rouges en heures pleines, la PAC est interdite
+    # et cette pièce n'a aucun secours — la régulation le signale (alerte) et subit.
+    actuators: { pac: clim_entree }
+    setpoints: { present: 19, absent: 17, nuit: 17.5, hors_gel: 8 }
+  chambre:
+    sensors: [temp_chambre]
+    actuators: { pac: clim_chambre }
+    setpoints: { present: 19.5, absent: 17, nuit: 18, hors_gel: 8 }
+
+# Bande morte : chauffe sous (consigne − hystérésis), arrêt au-dessus de
+# (consigne + hystérésis), rien entre les deux.
+hysteresis: 0.4
+
+# Plage « nuit » (heure locale). La plage traverse minuit : 22:30 → 06:30.
+night: { start: '22:30', end: '06:30' }
+
+# Présence vue « vraie » il y a moins de N minutes ⇒ la pièce est encore occupée
+# (temporisation anti-clignotement des capteurs).
+presence_timeout_min: 30
+
+energy:
+  # Jour rouge : PAC interdites en heures pleines (le kWh y vaut 4–5× le normal),
+  # autorisées en heures creuses.
+  tempo_rouge: { hp: { pac: forbidden }, hc: { pac: allowed } }
+  # Demain rouge : on prend de l'avance pendant les heures creuses de la nuit.
+  preheat_before_red: { start: '02:00', delta: 1.0 }
+
+# Délestage sur la puissance instantanée du compteur (percept `power`).
+#
+# TODO_LJ : `max_va: 9000` est une HYPOTHÈSE (9 kVA). La puissance réellement
+# souscrite est à confirmer par l'humain — cf. TODO_LJ.md §P6 et spec §17.
+# Coupure au-dessus de (max_va − margin_va), réarmement sous rearm_va.
+delestage:
+  max_va: 9000
+  margin_va: 1000
+  rearm_va: 7000
+  # Ordre de sacrifice : la pièce la moins habitée d'abord, le salon en dernier.
+  shed_order: [clim_entree, clim_chambre, clim_salon]
+
+# Délai minimal entre deux bascules marche/arrêt d'un même actionneur (protection
+# du compresseur, spec §10 « jamais d'oscillation »).
+anti_short_cycle_min: 5

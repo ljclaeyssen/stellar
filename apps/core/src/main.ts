@@ -7,6 +7,7 @@ const logger = createLogger('core');
 const mqttUrl = process.env.STELLAR_MQTT_URL ?? 'mqtt://localhost:1883';
 const dbPath = process.env.CORE_DB_PATH ?? 'data/journal.db';
 const apiPort = Number(process.env.CORE_API_PORT ?? 8850);
+const regulationFile = process.env.CORE_REGULATION_FILE ?? 'config/regulation.yaml';
 
 if (!Number.isInteger(apiPort) || apiPort < 0 || apiPort > 65_535) {
   logger.error('CORE_API_PORT invalide', { value: process.env.CORE_API_PORT });
@@ -19,13 +20,22 @@ function redactUrl(url: string): string {
 }
 
 const bus = await createBus({ url: mqttUrl, clientId: 'core', driver: 'core' });
-const core = await createCore({ bus, logger, journalPath: dbPath, apiPort });
+const core = await createCore({
+  bus,
+  logger,
+  journalPath: dbPath,
+  apiPort,
+  // Régulation active dès que le fichier existe (spec §10) — pas de flag à penser
+  // en production, et les tests montent un core sans régulation en l'omettant.
+  regulation: { configPath: regulationFile },
+});
 
 logger.info('core démarré', {
   mqttUrl: redactUrl(mqttUrl),
   dbPath,
   apiPort: core.api?.port,
   journalRows: core.journal.count(),
+  regulation: core.regulation !== null ? regulationFile : 'inactive',
 });
 
 let shuttingDown = false;

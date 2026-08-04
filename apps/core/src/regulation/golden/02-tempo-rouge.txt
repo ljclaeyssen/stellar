@@ -1,0 +1,162 @@
+# scénario : demain rouge : préchauffe nocturne puis journée rouge
+# Le jour Tempo court de 6 h à 6 h : « demain rouge » devient « aujourd'hui rouge »
+# à 6 h du matin. On préchauffe donc pendant les heures creuses (dès 2 h, +1 °C),
+# puis les PAC sont interdites de 6 h à 22 h — le salon bascule sur la chaudière,
+# les deux pièces qui n'en ont pas subissent. À 22 h les heures creuses reviennent
+# et les PAC avec.
+# config : hystérésis 0.4 °C · nuit 22:30→06:30 ·
+#          anti-court-cycle 5 min · présence 30 min ·
+#          délestage 9000/1000/7000 VA [clim_entree, clim_chambre, clim_salon]
+#          préchauffe dès 02:00 (+1 °C)
+# pas de 60 min · 23 pas · fuseau Europe/Paris
+
+2026-01-15 01:00 (jeu) · couleur bleu→rouge · HC · 1100 VA
+  salon     17.9 °C (temp_salon) · nuit · consigne 18.0 · pac
+  entree    17.2 °C (temp_entree) · nuit · consigne 17.5 · pac
+  chambre   17.8 °C (temp_chambre) · nuit · consigne 18.0 · pac
+    → salon/central_consigne : jour bleu HC → clim_salon chauffe salon, chauffage central parqué au hors-gel 8.0 °C
+      cmd thermostat_maison set {"targetTemp":8}
+
+2026-01-15 02:00 (jeu) · couleur bleu→rouge · HC · 1100 VA
+  salon     17.6 °C (temp_salon) · nuit · consigne 19.0 (préchauffe) · pac
+  entree    17.0 °C (temp_entree) · nuit · consigne 18.5 (préchauffe) · pac
+  chambre   17.5 °C (temp_chambre) · nuit · consigne 19.0 (préchauffe) · pac
+    → salon/pac_marche : 17.6 °C < 18.6 °C (consigne 19.0 ± 0.4 (mode nuit, préchauffe)) · jour bleu HC · demain rouge, préchauffe +1.0 °C → marche de clim_salon
+      cmd clim_salon set {"power":true,"mode":"heat","targetTemp":19}
+    → entree/pac_marche : 17.0 °C < 18.1 °C (consigne 18.5 ± 0.4 (mode nuit, préchauffe)) · jour bleu HC · demain rouge, préchauffe +1.0 °C → marche de clim_entree
+      cmd clim_entree set {"power":true,"mode":"heat","targetTemp":18.5}
+    → chambre/pac_marche : 17.5 °C < 18.6 °C (consigne 19.0 ± 0.4 (mode nuit, préchauffe)) · jour bleu HC · demain rouge, préchauffe +1.0 °C → marche de clim_chambre
+      cmd clim_chambre set {"power":true,"mode":"heat","targetTemp":19}
+
+2026-01-15 03:00 (jeu) · couleur bleu→rouge · HC · 1100 VA
+  salon     18.2 °C (temp_salon) · nuit · consigne 19.0 (préchauffe) · pac
+  entree    17.4 °C (temp_entree) · nuit · consigne 18.5 (préchauffe) · pac
+  chambre   18.0 °C (temp_chambre) · nuit · consigne 19.0 (préchauffe) · pac
+
+2026-01-15 04:00 (jeu) · couleur bleu→rouge · HC · 1100 VA
+  salon     18.8 °C (temp_salon) · nuit · consigne 19.0 (préchauffe) · pac
+  entree    17.9 °C (temp_entree) · nuit · consigne 18.5 (préchauffe) · pac
+  chambre   18.5 °C (temp_chambre) · nuit · consigne 19.0 (préchauffe) · pac
+
+2026-01-15 05:00 (jeu) · couleur bleu→rouge · HC · 1100 VA
+  salon     19.3 °C (temp_salon) · nuit · consigne 19.0 (préchauffe) · pac
+  entree    18.3 °C (temp_entree) · nuit · consigne 18.5 (préchauffe) · pac
+  chambre   18.9 °C (temp_chambre) · nuit · consigne 19.0 (préchauffe) · pac
+
+>>> RTE : le jour Tempo bascule — aujourd’hui rouge, heures pleines
+2026-01-15 06:00 (jeu) · couleur rouge→inconnue · HP · 1100 VA
+  salon     19.6 °C (temp_salon) · nuit · consigne 18.0 · central
+  entree    18.6 °C (temp_entree) · nuit · consigne 17.5 · aucun
+  chambre   19.2 °C (temp_chambre) · nuit · consigne 18.0 · aucun
+    → salon/pac_arret : jour rouge HP (PAC interdite) → arrêt de clim_salon
+      cmd clim_salon set {"power":false}
+    → salon/central_consigne : 19.6 °C, consigne 18.0 ± 0.4 (mode nuit) · jour rouge HP (PAC interdite) → consigne 18.0 °C au chauffage central
+      cmd thermostat_maison set {"targetTemp":18}
+    → entree/pac_arret : jour rouge HP (PAC interdite) → arrêt de clim_entree
+      cmd clim_entree set {"power":false}
+    ! entree/pac_interdite_sans_secours : jour rouge HP (PAC interdite) et entree n'a pas de chauffage central → pièce non chauffée, on subit
+    → chambre/pac_arret : jour rouge HP (PAC interdite) → arrêt de clim_chambre
+      cmd clim_chambre set {"power":false}
+    ! chambre/pac_interdite_sans_secours : jour rouge HP (PAC interdite) et chambre n'a pas de chauffage central → pièce non chauffée, on subit
+
+2026-01-15 07:00 (jeu) · couleur rouge→inconnue · HP · 1100 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · central
+  entree    18.4 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   19.0 °C (temp_chambre) · present · consigne 19.5 · aucun
+    → salon/central_consigne : 19.4 °C, consigne 20.5 ± 0.4 (mode present) · jour rouge HP (PAC interdite) → consigne 20.5 °C au chauffage central
+      cmd thermostat_maison set {"targetTemp":20.5}
+
+2026-01-15 08:00 (jeu) · couleur rouge→inconnue · HP · 1100 VA
+  salon     19.8 °C (temp_salon) · present · consigne 20.5 · central
+  entree    18.2 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   18.8 °C (temp_chambre) · present · consigne 19.5 · aucun
+
+2026-01-15 09:00 (jeu) · couleur rouge→inconnue · HP · 1100 VA
+  salon     20.2 °C (temp_salon) · present · consigne 20.5 · central
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · aucun
+
+2026-01-15 10:00 (jeu) · couleur rouge→inconnue · HP · 1100 VA
+  salon     20.6 °C (temp_salon) · present · consigne 20.5 · central
+  entree    17.8 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   18.4 °C (temp_chambre) · present · consigne 19.5 · aucun
+
+>>> RTE publie la couleur du lendemain : bleu
+2026-01-15 11:00 (jeu) · couleur rouge→bleu · HP · 1100 VA
+  salon     20.9 °C (temp_salon) · present · consigne 20.5 · central
+  entree    17.6 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   18.2 °C (temp_chambre) · present · consigne 19.5 · aucun
+
+2026-01-15 12:00 (jeu) · couleur rouge→bleu · HP · 1100 VA
+  salon     21.1 °C (temp_salon) · present · consigne 20.5 · central
+  entree    17.4 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   18.0 °C (temp_chambre) · present · consigne 19.5 · aucun
+
+2026-01-15 13:00 (jeu) · couleur rouge→bleu · HP · 1100 VA
+  salon     20.8 °C (temp_salon) · present · consigne 20.5 · central
+  entree    17.2 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   17.8 °C (temp_chambre) · present · consigne 19.5 · aucun
+
+2026-01-15 14:00 (jeu) · couleur rouge→bleu · HP · 1100 VA
+  salon     20.5 °C (temp_salon) · present · consigne 20.5 · central
+  entree    17.0 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   17.6 °C (temp_chambre) · present · consigne 19.5 · aucun
+
+2026-01-15 15:00 (jeu) · couleur rouge→bleu · HP · 1100 VA
+  salon     20.2 °C (temp_salon) · present · consigne 20.5 · central
+  entree    16.8 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   17.4 °C (temp_chambre) · present · consigne 19.5 · aucun
+
+2026-01-15 16:00 (jeu) · couleur rouge→bleu · HP · 1100 VA
+  salon     20.0 °C (temp_salon) · present · consigne 20.5 · central
+  entree    16.6 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   17.2 °C (temp_chambre) · present · consigne 19.5 · aucun
+
+2026-01-15 17:00 (jeu) · couleur rouge→bleu · HP · 1100 VA
+  salon     19.8 °C (temp_salon) · present · consigne 20.5 · central
+  entree    16.5 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   17.1 °C (temp_chambre) · present · consigne 19.5 · aucun
+
+2026-01-15 18:00 (jeu) · couleur rouge→bleu · HP · 1100 VA
+  salon     19.6 °C (temp_salon) · present · consigne 20.5 · central
+  entree    16.3 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   16.9 °C (temp_chambre) · present · consigne 19.5 · aucun
+
+2026-01-15 19:00 (jeu) · couleur rouge→bleu · HP · 1100 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · central
+  entree    16.2 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   16.8 °C (temp_chambre) · present · consigne 19.5 · aucun
+
+2026-01-15 20:00 (jeu) · couleur rouge→bleu · HP · 1100 VA
+  salon     19.2 °C (temp_salon) · present · consigne 20.5 · central
+  entree    16.0 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   16.6 °C (temp_chambre) · present · consigne 19.5 · aucun
+
+2026-01-15 21:00 (jeu) · couleur rouge→bleu · HP · 1100 VA
+  salon     19.0 °C (temp_salon) · present · consigne 20.5 · central
+  entree    15.9 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   16.5 °C (temp_chambre) · present · consigne 19.5 · aucun
+
+2026-01-15 22:00 (jeu) · couleur rouge→bleu · HC · 1100 VA
+  salon     18.8 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    15.8 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   16.4 °C (temp_chambre) · present · consigne 19.5 · pac
+    → salon/pac_marche : 18.8 °C < 20.1 °C (consigne 20.5 ± 0.4 (mode present)) · jour rouge HC (PAC autorisée en heures creuses) → marche de clim_salon
+      cmd clim_salon set {"power":true,"mode":"heat","targetTemp":20.5}
+    → salon/central_consigne : jour rouge HC (PAC autorisée en heures creuses) → clim_salon chauffe salon, chauffage central parqué au hors-gel 8.0 °C
+      cmd thermostat_maison set {"targetTemp":8}
+    → entree/pac_marche : 15.8 °C < 18.6 °C (consigne 19.0 ± 0.4 (mode present)) · jour rouge HC (PAC autorisée en heures creuses) → marche de clim_entree
+      cmd clim_entree set {"power":true,"mode":"heat","targetTemp":19}
+    → chambre/pac_marche : 16.4 °C < 19.1 °C (consigne 19.5 ± 0.4 (mode present)) · jour rouge HC (PAC autorisée en heures creuses) → marche de clim_chambre
+      cmd clim_chambre set {"power":true,"mode":"heat","targetTemp":19.5}
+
+2026-01-15 23:00 (jeu) · couleur rouge→bleu · HC · 1100 VA
+  salon     19.2 °C (temp_salon) · nuit · consigne 18.0 · pac
+  entree    16.4 °C (temp_entree) · nuit · consigne 17.5 · pac
+  chambre   17.0 °C (temp_chambre) · nuit · consigne 18.0 · pac
+    → salon/pac_arret : 19.2 °C > 18.4 °C (consigne 18.0 ± 0.4 (mode nuit)) · jour rouge HC (PAC autorisée en heures creuses) → arrêt de clim_salon
+      cmd clim_salon set {"power":false}
+    → entree/pac_consigne : 16.4 °C dans la bande, consigne 17.5 ± 0.4 (mode nuit) · jour rouge HC (PAC autorisée en heures creuses) → consigne 17.5 °C sur clim_entree
+      cmd clim_entree set {"mode":"heat","targetTemp":17.5}
+    → chambre/pac_consigne : 17.0 °C dans la bande, consigne 18.0 ± 0.4 (mode nuit) · jour rouge HC (PAC autorisée en heures creuses) → consigne 18.0 °C sur clim_chambre
+      cmd clim_chambre set {"mode":"heat","targetTemp":18}

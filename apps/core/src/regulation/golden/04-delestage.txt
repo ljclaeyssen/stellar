@@ -1,0 +1,183 @@
+# scénario : délestage : pic de puissance, coupures et réarmement
+# Le four et la plaque s'ajoutent aux trois PAC : la puissance dépasse
+# 9000 − 1000 VA. Les PAC sont coupées une par une dans l'ordre configuré
+# (entrée, chambre, salon), puis réarmées dans l'ordre inverse quand la
+# puissance retombe sous 7000 VA — en respectant l'anti-court-cycle.
+# Le salon, lui, bascule sur la chaudière pendant sa coupure.
+# config : hystérésis 0.4 °C · nuit 22:30→06:30 ·
+#          anti-court-cycle 5 min · présence 30 min ·
+#          délestage 9000/1000/7000 VA [clim_entree, clim_chambre, clim_salon]
+#          préchauffe dès 02:00 (+1 °C)
+# pas de 1 min · 26 pas · fuseau Europe/Paris
+
+2026-01-15 18:00 (jeu) · couleur bleu→bleu · HP · 4200 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 18:01 (jeu) · couleur bleu→bleu · HP · 4200 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 18:02 (jeu) · couleur bleu→bleu · HP · 4200 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+
+>>> four + plaque induction : 9400 VA
+2026-01-15 18:03 (jeu) · couleur bleu→bleu · HP · 9400 VA · délestés: clim_entree
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+    → maison/delestage : puissance 9400 VA > 8000 VA (9000 − 1000) → délestage de clim_entree
+      cmd clim_entree set {"power":false}
+    · entree/pac_delestee : clim_entree est délestée → entree ne chauffe pas tant que le pic dure
+
+>>> la coupure de l’entrée ne suffit pas
+2026-01-15 18:04 (jeu) · couleur bleu→bleu · HP · 8600 VA · délestés: clim_entree, clim_chambre
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · aucun
+    → maison/delestage : puissance 8600 VA > 8000 VA (9000 − 1000) → délestage de clim_chambre
+      cmd clim_chambre set {"power":false}
+    · entree/pac_delestee : clim_entree est délestée → entree ne chauffe pas tant que le pic dure
+    · chambre/pac_delestee : clim_chambre est délestée → chambre ne chauffe pas tant que le pic dure
+
+>>> la coupure de la chambre ne suffit toujours pas
+2026-01-15 18:05 (jeu) · couleur bleu→bleu · HP · 8200 VA · délestés: clim_entree, clim_chambre, clim_salon
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · central
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · aucun
+    → maison/delestage : puissance 8200 VA > 8000 VA (9000 − 1000) → délestage de clim_salon
+      cmd clim_salon set {"power":false}
+    → salon/central_consigne : 19.4 °C, consigne 20.5 ± 0.4 (mode present) · jour bleu HP → consigne 20.5 °C au chauffage central
+      cmd thermostat_maison set {"targetTemp":20.5}
+    · entree/pac_delestee : clim_entree est délestée → entree ne chauffe pas tant que le pic dure
+    · chambre/pac_delestee : clim_chambre est délestée → chambre ne chauffe pas tant que le pic dure
+
+>>> les trois PAC coupées : la puissance redescend
+2026-01-15 18:06 (jeu) · couleur bleu→bleu · HP · 7400 VA · délestés: clim_entree, clim_chambre, clim_salon
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · central
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · aucun
+    · entree/pac_delestee : clim_entree est délestée → entree ne chauffe pas tant que le pic dure
+    · chambre/pac_delestee : clim_chambre est délestée → chambre ne chauffe pas tant que le pic dure
+
+2026-01-15 18:07 (jeu) · couleur bleu→bleu · HP · 7400 VA · délestés: clim_entree, clim_chambre, clim_salon
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · central
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · aucun
+    · entree/pac_delestee : clim_entree est délestée → entree ne chauffe pas tant que le pic dure
+    · chambre/pac_delestee : clim_chambre est délestée → chambre ne chauffe pas tant que le pic dure
+
+>>> plaque éteinte : 6500 VA, sous le seuil de réarmement
+2026-01-15 18:08 (jeu) · couleur bleu→bleu · HP · 6500 VA · délestés: clim_entree, clim_chambre, clim_salon
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · central
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · aucun
+    · maison/rearmement_differe : puissance 6500 VA < 7000 VA mais clim_salon a basculé il y a 3 min < 5 min (anti-court-cycle)
+    · entree/pac_delestee : clim_entree est délestée → entree ne chauffe pas tant que le pic dure
+    · chambre/pac_delestee : clim_chambre est délestée → chambre ne chauffe pas tant que le pic dure
+
+2026-01-15 18:09 (jeu) · couleur bleu→bleu · HP · 6500 VA · délestés: clim_entree, clim_chambre, clim_salon
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · central
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · aucun
+    · maison/rearmement_differe : puissance 6500 VA < 7000 VA mais clim_salon a basculé il y a 4 min < 5 min (anti-court-cycle)
+    · entree/pac_delestee : clim_entree est délestée → entree ne chauffe pas tant que le pic dure
+    · chambre/pac_delestee : clim_chambre est délestée → chambre ne chauffe pas tant que le pic dure
+
+2026-01-15 18:10 (jeu) · couleur bleu→bleu · HP · 6500 VA · délestés: clim_entree, clim_chambre
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · aucun
+    → maison/rearmement : puissance 6500 VA < 7000 VA (seuil de réarmement) → clim_salon rendu au thermostat
+    → salon/pac_marche : 19.4 °C < 20.1 °C (consigne 20.5 ± 0.4 (mode present)) · jour bleu HP → marche de clim_salon
+      cmd clim_salon set {"power":true,"mode":"heat","targetTemp":20.5}
+    → salon/central_consigne : jour bleu HP → clim_salon chauffe salon, chauffage central parqué au hors-gel 8.0 °C
+      cmd thermostat_maison set {"targetTemp":8}
+    · entree/pac_delestee : clim_entree est délestée → entree ne chauffe pas tant que le pic dure
+    · chambre/pac_delestee : clim_chambre est délestée → chambre ne chauffe pas tant que le pic dure
+
+2026-01-15 18:11 (jeu) · couleur bleu→bleu · HP · 6500 VA · délestés: clim_entree
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · aucun
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+    → maison/rearmement : puissance 6500 VA < 7000 VA (seuil de réarmement) → clim_chambre rendu au thermostat
+    · entree/pac_delestee : clim_entree est délestée → entree ne chauffe pas tant que le pic dure
+    → chambre/pac_marche : 18.6 °C < 19.1 °C (consigne 19.5 ± 0.4 (mode present)) · jour bleu HP → marche de clim_chambre
+      cmd clim_chambre set {"power":true,"mode":"heat","targetTemp":19.5}
+
+2026-01-15 18:12 (jeu) · couleur bleu→bleu · HP · 6500 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+    → maison/rearmement : puissance 6500 VA < 7000 VA (seuil de réarmement) → clim_entree rendu au thermostat
+    → entree/pac_marche : 18.0 °C < 18.6 °C (consigne 19.0 ± 0.4 (mode present)) · jour bleu HP → marche de clim_entree
+      cmd clim_entree set {"power":true,"mode":"heat","targetTemp":19}
+
+2026-01-15 18:13 (jeu) · couleur bleu→bleu · HP · 6500 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 18:14 (jeu) · couleur bleu→bleu · HP · 6500 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 18:15 (jeu) · couleur bleu→bleu · HP · 6500 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 18:16 (jeu) · couleur bleu→bleu · HP · 6500 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 18:17 (jeu) · couleur bleu→bleu · HP · 6500 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 18:18 (jeu) · couleur bleu→bleu · HP · 6500 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 18:19 (jeu) · couleur bleu→bleu · HP · 6500 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 18:20 (jeu) · couleur bleu→bleu · HP · 6500 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 18:21 (jeu) · couleur bleu→bleu · HP · 6500 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 18:22 (jeu) · couleur bleu→bleu · HP · 6500 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 18:23 (jeu) · couleur bleu→bleu · HP · 6500 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 18:24 (jeu) · couleur bleu→bleu · HP · 6500 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
+
+2026-01-15 18:25 (jeu) · couleur bleu→bleu · HP · 6500 VA
+  salon     19.4 °C (temp_salon) · present · consigne 20.5 · pac
+  entree    18.0 °C (temp_entree) · present · consigne 19.0 · pac
+  chambre   18.6 °C (temp_chambre) · present · consigne 19.5 · pac
