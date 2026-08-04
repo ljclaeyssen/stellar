@@ -187,8 +187,10 @@ describe('tempo-driver contre le simulateur', () => {
     });
     const seen: Entity[] = [];
     await late.onState({ kind: 'tempo' }, (entity_) => seen.push(entity_));
+    // ≥ 1 et pas === 1 : le retained arrive d'abord, mais sur une machine lente
+    // (CI 2 cœurs) le polling du driver a le temps de republier pendant l'attente.
     await vi.waitFor(() => {
-      expect(seen).toHaveLength(1);
+      expect(seen.length).toBeGreaterThanOrEqual(1);
     });
     expect(seen[0]?.id).toBe(ENTITY_ID);
     await late.close();

@@ -277,12 +277,17 @@ describe('z2m-normalizer contre le simulateur', () => {
     // anormal est le rôle du core (seuils par kind, P5), pas du traducteur.
     sim.stopDevice('temp_salon');
     await handle.drain();
-    const published = states.length;
 
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    await handle.drain();
+    // D'abord laisser retomber les livraisons en vol (QoS 1 parties AVANT le
+    // stop peuvent arriver après, surtout en CI lente) : attendre la stabilité,
+    // PUIS vérifier qu'il ne se publie plus rien.
+    await vi.waitFor(async () => {
+      const before = states.length;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      await handle.drain();
+      expect(states.length).toBe(before);
+    });
 
-    expect(states).toHaveLength(published);
     expect(states.every((entity) => entity.stale === undefined)).toBe(true);
     expect(handle.offline).toEqual([]);
   });
