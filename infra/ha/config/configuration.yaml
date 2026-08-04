@@ -1,0 +1,62 @@
+# Home Assistant — configuration MINIMALE de plomberie vocale (P8, spec §12).
+#
+# INTERDIT ABSOLU ici (spec §4 n°5) : `automation:`, `script:`, `scene:`,
+# `template:`, HACS, blueprints, helpers qui calculent quelque chose. Toute la
+# logique de la maison vit dans apps/core ; HA transporte de l'audio, affiche des
+# entités, et rien de plus. Si une règle vous démange, elle va dans
+# config/regulation.yaml — pas dans ce fichier.
+#
+# Ce que HA sait de la maison lui vient exclusivement du pont HA-discovery du core
+# (topics `homeassistant/<component>/stellar_<entityId>/config`, retained). Aucune
+# entité n'est déclarée à la main : brancher un nouvel objet ne demande aucune
+# modification de ce fichier.
+
+homeassistant:
+  name: Stellar
+  time_zone: Europe/Paris
+  unit_system: metric
+  currency: EUR
+  country: FR
+
+# Interface web + application mobile (UI de secours, notifications sortantes).
+frontend:
+mobile_app:
+
+http:
+  server_port: 8123
+  # Aucun reverse proxy pour l'instant : accès LAN direct, distant par Tailscale.
+
+# --- Assist : le pipeline vocal ------------------------------------------------
+# `assist_pipeline` orchestre wake word → STT → conversation → TTS.
+# `conversation` fournit l'agent par défaut de HA : c'est lui qui exécute les
+# intents locaux (« chemin rapide ») sur les entités du pont. Les phrases qu'il ne
+# reconnaît pas doivent être routées vers l'agent Stellar : dans Paramètres →
+# Assistants vocaux, choisir « Stellar » comme agent de conversation du pipeline.
+assist_pipeline:
+conversation:
+
+# --- Chemin lent : apps/agent --------------------------------------------------
+# Composant maison (custom_components/stellar_conversation) : il ne fait que
+# relayer le texte vers apps/agent en HTTP et rendre sa réponse. Zéro logique.
+stellar_conversation:
+  # Adresse du service agent sur le LAN (apps/agent, POST /turn).
+  url: http://127.0.0.1:8852/turn
+  # Un tour d'agent peut chercher sur le web : la voix attend, mais pas éternellement.
+  timeout: 45
+
+# --- À ajouter par l'interface, PAS ici ---------------------------------------
+# Ces intégrations n'acceptent plus de configuration YAML (config flow obligatoire
+# depuis HA 2022.x). Elles se déclarent une fois dans Paramètres → Appareils et
+# services → Ajouter une intégration :
+#
+#   * MQTT      → broker : l'IP du N100, port 1883, pas d'utilisateur en dev.
+#                 Laisser le préfixe de découverte à `homeassistant` (c'est celui
+#                 que publie le core ; sinon ajuster CORE_HA_BRIDGE côté core).
+#   * Wyoming   → une entrée par service : whisper:10300 puis piper:10200
+#                 (127.0.0.1 si homeassistant tourne en network_mode: host).
+#   * ESPHome   → les satellites Voice PE, découverts ou ajoutés par IP.
+#
+# Rien de tout cela ne porte de logique : ce sont des branchements.
+
+logger:
+  default: info

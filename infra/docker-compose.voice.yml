@@ -1,0 +1,100 @@
+# Infra voix Stellar — P8. Gabarit : à démarrer sur le N100, à côté du broker.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.voice.yml up -d
+#
+# LAN uniquement, zéro port ouvert vers l'extérieur (spec §14).
+#
+# Ces trois services sont de la PLOMBERIE VOCALE, rien d'autre (interdit §4 n°5) :
+# Home Assistant transporte l'audio des satellites Voice PE vers Whisper (STT) et
+# Piper (TTS), expose les entités annoncées par le pont HA-discovery du core aux
+# intents locaux (« chemin rapide », < 1 s), et délègue tout le reste à apps/agent
+# via le composant `stellar_conversation` (« chemin lent »). Aucune automatisation,
+# aucun template métier ne vit ici : la maison décide dans apps/core.
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: stellar-ha
+    restart: always
+    environment:
+      TZ: Europe/Paris
+    volumes:
+      - ./ha/config:/config
+      # Le composant conversation vit dans le repo (versionné, relu, testé) : HA le
+      # lit, ne l'écrit jamais. Installation par copie possible aussi, cf. son README.
+      - ./ha/custom_components:/config/custom_components:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      # Dev : loopback. Sur le N100, exporter STELLAR_HA_BIND=0.0.0.0 pour que les
+      # satellites et l'app mobile du LAN joignent HA — jamais d'exposition WAN,
+      # l'accès distant passe par Tailscale (spec §14).
+      - '${STELLAR_HA_BIND:-127.0.0.1}:8123:8123'
+    # network_mode: host
+    #   À n'activer QUE si la découverte automatique (mDNS/zeroconf) des satellites
+    #   Voice PE ou de l'app mobile est souhaitée : elle ne traverse pas le réseau
+    #   bridge de docker. Conséquences si on l'active :
+    #     - supprimer le bloc `ports` ci-dessus (host ne le supporte pas) ;
+    #     - les noms de services docker ne résolvent plus : déclarer Whisper et
+    #       Piper sur 127.0.0.1:10300 et 127.0.0.1:10200, et dé-commenter leurs
+    #       `ports` plus bas ;
+    #     - HA voit alors tout le LAN — à peser contre le confort de la découverte.
+    #   Par défaut : bridge, et les satellites se configurent avec l'IP du N100.
+    depends_on:
+      - whisper
+      - piper
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:8123/ >/dev/null || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    security_opt:
+      - 'no-new-privileges:true'
+
+  # STT — faster-whisper via le protocole Wyoming. `small` est le compromis retenu
+  # pour un N100 sans GPU : `base` fait trop de contresens sur des noms de pièces,
+  # `medium` sort du budget latence (objectif : intent réflexe sous la seconde).
+  whisper:
+    image: rhasspy/wyoming-whisper:latest
+    container_name: stellar-whisper
+    restart: always
+    command: ['--model', 'small', '--language', 'fr', '--beam-size', '1']
+    volumes:
+      - whisper-data:/data
+    # ports:
+    #   - '127.0.0.1:10300:10300' # requis seulement si homeassistant passe en network_mode: host
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    security_opt:
+      - 'no-new-privileges:true'
+
+  # TTS — Piper. Voix française ; `siwis-medium` est le défaut de bring-up, à
+  # réécouter en vrai (c'est aussi Piper qui générera les clips d'entraînement du
+  # wake word « OK Stellar », cf. spec §12 et ADR-007).
+  piper:
+    image: rhasspy/wyoming-piper:latest
+    container_name: stellar-piper
+    restart: always
+    command: ['--voice', 'fr_FR-siwis-medium']
+    volumes:
+      - piper-data:/data
+    # ports:
+    #   - '127.0.0.1:10200:10200' # requis seulement si homeassistant passe en network_mode: host
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    security_opt:
+      - 'no-new-privileges:true'
+
+volumes:
+  whisper-data:
+  piper-data:

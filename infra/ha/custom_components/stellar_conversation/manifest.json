@@ -1,0 +1,12 @@
+{
+  "domain": "stellar_conversation",
+  "name": "Stellar Conversation",
+  "version": "0.1.0",
+  "documentation": "https://github.com/ljclaeyssen/stellar",
+  "issue_tracker": "https://github.com/ljclaeyssen/stellar/issues",
+  "codeowners": [],
+  "dependencies": ["conversation"],
+  "requirements": [],
+  "iot_class": "local_push",
+  "integration_type": "service"
+}

@@ -132,6 +132,20 @@ ne jamais régénérer un token depuis le portail pendant que le driver tourne
 - Choisir le fournisseur de cours de bourse pour `market_quote` (le tool est
   prêt avec un provider pluggable + fake).
 
+## P8 — Voix (matériel ~200-270 €, après P5)
+
+1. Acheter 3-4× Home Assistant Voice PE (~65 €/u).
+2. Sur le N100 : `docker compose -f infra/docker-compose.voice.yml up -d`
+   (HA allégé + whisper fr + piper fr), copier
+   `infra/ha/custom_components/stellar_conversation/` dans le config HA,
+   activer le pont : `CORE_HA_BRIDGE=1` sur le service core → toutes les
+   entités du bus apparaissent dans HA (intents locaux + app mobile).
+3. Appairer les Voice PE (wake word intégré « Okay Nabu » pour le bring-up).
+4. DoD réel : minuteur < 1 s ; conversation multi-tours depuis le salon ;
+   annonce du planner au réveil.
+5. Plus tard (hors DoD) : entraîner « OK Stellar » (openWakeWord) et trancher
+   ADR-007.
+
 ## P1 — La télé (pour valider le DoD)
 
 - Activer la **veille réseau** sur la TV Android TV (ne jamais la couper par une prise).

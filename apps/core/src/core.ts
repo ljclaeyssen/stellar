@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import type { Bus, Logger } from '@stellar/bus';
 import type { Kind } from '@stellar/contracts';
 import { startApiServer, type ApiServer } from './api.js';
+import { createHaBridge, HA_DISCOVERY_DEFAULT_PREFIX, type HaBridge } from './ha-bridge/index.js';
 import { createJournal, journalEntryFromMessage, type Journal } from './journal.js';
 import { CORE_MCP_DEFAULT_PORT, startMcpServer, type McpHttpServer } from './mcp/index.js';
 import { createMirror, type Mirror } from './mirror.js';
@@ -43,6 +44,20 @@ export interface McpCoreOptions {
   regulationConfigPath?: string;
 }
 
+export interface HaBridgeCoreOptions {
+  /**
+   * Défaut : **activé si l'option est présente**, comme la régulation. L'option
+   * absente ⇒ pas de pont : un core de test ou un core sans Home Assistant ne
+   * doit rien annoncer sur `homeassistant/#` (les configs sont retained, elles
+   * survivraient au process).
+   */
+  enabled?: boolean;
+  /** `discovery_prefix` de HA — défaut `homeassistant`. */
+  discoveryPrefix?: string;
+  /** Timeout des commandes vocales — défaut 5 s. */
+  commandTimeoutMs?: number;
+}
+
 export interface CoreOptions {
   bus: Bus;
   logger: Logger;
@@ -59,6 +74,8 @@ export interface CoreOptions {
   regulation?: RegulationCoreOptions;
   /** Serveur MCP (P7). Absent = valeurs par défaut, donc **activé**. */
   mcp?: McpCoreOptions;
+  /** Pont HA-discovery (P8). Absent = **désactivé** (cf. `HaBridgeCoreOptions`). */
+  haBridge?: HaBridgeCoreOptions;
 }
 
 export interface Core {
@@ -71,6 +88,8 @@ export interface Core {
   regulation: Regulation | null;
   /** `null` quand `mcp: { enabled: false }`. */
   mcp: McpHttpServer | null;
+  /** `null` quand le pont HA-discovery est absent ou désactivé. */
+  haBridge: HaBridge | null;
   close(): Promise<void>;
 }
 
@@ -87,6 +106,11 @@ export interface Core {
  * Invariant à maintenir : si le core se met un jour à consommer des commandes
  * (`bus.onCommand`, filtre `home/cmd/core/+`) ou des événements ciblés
  * (`bus.onEvent`), il faudra aligner les filtres ci-dessous pour rester disjoint.
+ *
+ * P8 : le pont HA-discovery ajoute `home/ha/cmd/#`, disjoint de tous ces filtres
+ * (`home/cmd/#` exige `cmd` au 2ᵉ niveau). Ces messages sont donc journalisés une
+ * seule fois — et c'est voulu : ce que la voix a demandé est un fait au même titre
+ * que la commande qui en découle.
  */
 const JOURNAL_FILTERS = [
   'home/state/#',
@@ -177,6 +201,40 @@ async function startMcp(
   return mcp;
 }
 
+/**
+ * Montage du pont HA-discovery (P8).
+ *
+ * Monté **après** le miroir : le pont s'en sert pour rattraper les entités déjà
+ * reçues et pour résoudre le driver d'une commande vocale (ADR-008). Éteint par
+ * défaut — il ne s'allume qu'où un Home Assistant existe (`CORE_HA_BRIDGE=1`).
+ */
+async function startHaBridge(
+  options: CoreOptions,
+  mirror: Mirror,
+  bus: Bus,
+  logger: Logger,
+): Promise<HaBridge | null> {
+  const settings = options.haBridge;
+  if (!settings || settings.enabled === false) return null;
+
+  const bridge = await createHaBridge({
+    bus,
+    mirror,
+    logger,
+    ...(settings.discoveryPrefix !== undefined
+      ? { discoveryPrefix: settings.discoveryPrefix }
+      : {}),
+    ...(settings.commandTimeoutMs !== undefined
+      ? { commandTimeoutMs: settings.commandTimeoutMs }
+      : {}),
+  });
+  logger.info('pont HA-discovery actif', {
+    discoveryPrefix: settings.discoveryPrefix ?? HA_DISCOVERY_DEFAULT_PREFIX,
+    entities: bridge.published,
+  });
+  return bridge;
+}
+
 export async function createCore(options: CoreOptions): Promise<Core> {
   const { bus, logger, journalPath } = options;
 
@@ -222,6 +280,8 @@ export async function createCore(options: CoreOptions): Promise<Core> {
 
   const mcp = await startMcp(options, mirror, journal, bus, logger);
 
+  const haBridge = await startHaBridge(options, mirror, bus, logger);
+
   return {
     mirror,
     journal,
@@ -229,9 +289,11 @@ export async function createCore(options: CoreOptions): Promise<Core> {
     api,
     regulation,
     mcp,
+    haBridge,
     async close() {
       regulation?.close();
       staleWatcher.close();
+      haBridge?.close();
       await mcp?.close();
       await api?.close();
       // Le bus n'appartient pas au core : c'est l'appelant qui le ferme, et il doit

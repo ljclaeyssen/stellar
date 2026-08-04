@@ -22,6 +22,13 @@ function readPort(name: string, fallback: number): number {
 const apiPort = readPort('CORE_API_PORT', 8850);
 const mcpPort = readPort('CORE_MCP_PORT', 8851);
 
+/**
+ * Pont HA-discovery (P8) : éteint par défaut, allumé là où un Home Assistant
+ * existe. Les configs qu'il publie sont retained — les allumer « pour voir » sur
+ * une machine de dev laisserait des entités fantômes dans le broker.
+ */
+const haBridgeEnabled = process.env.CORE_HA_BRIDGE === '1';
+
 /** Masque `user:pass@` dans une URL MQTT — les logs partent en clair vers journald. */
 function redactUrl(url: string): string {
   return url.replace(/\/\/[^/@]*@/, '//***:***@');
@@ -38,6 +45,7 @@ const core = await createCore({
   regulation: { configPath: regulationFile },
   // Serveur MCP : porte d'entrée d'apps/agent, en loopback comme l'API (spec §10).
   mcp: { port: mcpPort },
+  ...(haBridgeEnabled ? { haBridge: {} } : {}),
 });
 
 logger.info('core démarré', {
@@ -47,6 +55,7 @@ logger.info('core démarré', {
   mcpUrl: core.mcp?.url,
   journalRows: core.journal.count(),
   regulation: core.regulation !== null ? regulationFile : 'inactive',
+  haBridge: core.haBridge !== null ? 'actif' : 'inactif',
 });
 
 let shuttingDown = false;

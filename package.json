@@ -24,6 +24,7 @@
     "check:p5": "pnpm check",
     "check:p6": "pnpm check",
     "check:p7": "pnpm check",
+    "check:p8": "pnpm check",
     "secrets:encrypt": "sops -e -i",
     "secrets:decrypt": "sops -d"
   },

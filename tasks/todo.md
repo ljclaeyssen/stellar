@@ -10,6 +10,25 @@
 
 ---
 
+# P8 — Voix (partie logicielle livrée le 2026-08-04 — satellites/HA réels humains)
+
+- [x] Pont HA-discovery (apps/core/src/ha-bridge) : table kind→composant HA
+      exhaustive par `satisfies` (un nouveau kind casse la compil tant que HA
+      n'est pas décidé), configs retained dédupliquées + effacement, commandes
+      HA en **JSON** (pas ON/OFF — le dispatch bus reste propre) traduites en
+      Command issuedBy 'voice' via le miroir, availability sur home/health,
+      stale/room en attributs, device par pièce (intents « salon ») ; lock &
+      réservés jamais publiés ni pilotables (testé) ; 11 tests dont HA-démarre-
+      après-le-core (retained)
+- [x] Infra voix : docker-compose.voice.yml (HA + whisper fr + piper fr),
+      configuration.yaml plomberie pure (MQTT/Wyoming = config-flow UI,
+      documenté), custom component stellar_conversation (~plomberie → POST
+      /turn de l'agent ; relu non exécuté — bring-up N100)
+- [x] `check:p8` ; DoD matériel (minuteur < 1 s, multi-tours, annonce planner)
+      dans TODO_LJ
+
+---
+
 # P7 — MCP + Agent v1 (DoD simulé atteint le 2026-08-04)
 
 - [x] Serveur MCP core : 7 tools (get_state, send_command issuedBy=agent forcé + refus lock/kinds réservés, subscribe/poll borné FIFO+TTL,
