@@ -369,21 +369,38 @@ describe('midea-driver contre le fake du wrapper (ADR-010 niveau 2)', () => {
   });
 
   it('anti-martèlement : une commande repousse le poll suivant d’une période complète', async () => {
+    // Monde dédié à polling quasi gelé : avec le POLL_MS court du beforeEach,
+    // des polls réguliers s'intercalent pendant l'aller-retour MQTT sur une
+    // machine lente (2 polls observés en CI) et rendent toute borne arbitraire.
+    // Ici : un seul poll initial garanti, donc tout getStatus supplémentaire
+    // serait NÉCESSAIREMENT un resync forcé par la commande — assertion stricte.
+    handle.close();
+    fakes.clear();
+    states.length = 0;
+    handle = await startMideaDriver({
+      bus: driverBus,
+      units: UNITS,
+      logger: logger(),
+      pollMs: 600_000,
+      staleAfterMs: 3_000_000,
+      createAppliance: (unit: MideaUnit) => {
+        const fake = createFakeAppliance({ id: unit.id });
+        fakes.set(unit.entityId, fake);
+        return fake;
+      },
+    });
     await vi.waitFor(() => {
       expect(states.some((entity) => entity.id === CLIM_SALON)).toBe(true);
     });
     const fake = fakeOf(CLIM_SALON);
-
     const before = fake.calls.getStatus;
+
     const ack = await send(cmd(CLIM_SALON, { targetTemp: 24 }));
     expect(ack.status).toBe('ok');
 
-    // La resynchronisation vient du setStatus lui-même : la commande ne doit
-    // déclencher AUCUN getStatus forcé. Tolérance : au plus un poll régulier
-    // peut s'être intercalé pendant l'aller-retour MQTT (course légitime sous
-    // charge — la machine de CI peut mettre > POLL_MS à livrer la commande) ;
-    // un resync forcé, lui, ajouterait systématiquement un appel de plus.
-    expect(fake.calls.getStatus - before).toBeLessThanOrEqual(1);
+    // La resynchronisation vient du retour de setStatus lui-même : la commande
+    // ne déclenche aucun getStatus arraché au dongle.
+    expect(fake.calls.getStatus).toBe(before);
     expect(fake.calls.setStatus).toBe(1);
   });
 
