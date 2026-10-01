@@ -15,16 +15,16 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.3.220",
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@anthropic-ai/claude-agent-sdk": "^0.3.283",
+    "@modelcontextprotocol/sdk": "^1.30.1",
     "@stellar/bus": "workspace:*",
     "@stellar/contracts": "workspace:*",
-    "yaml": "^2.9.0",
-    "zod": "^3.25.76"
+    "yaml": "^2.9.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@stellar/test-utils": "workspace:*",
-    "typescript": "^5.7.3",
-    "vitest": "^3.0.0"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2"
   }
 }

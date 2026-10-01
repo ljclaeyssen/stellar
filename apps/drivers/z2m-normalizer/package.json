@@ -17,14 +17,14 @@
   "dependencies": {
     "@stellar/bus": "workspace:*",
     "@stellar/contracts": "workspace:*",
-    "mqtt": "^5.10.0",
-    "zod": "^3.25.0"
+    "mqtt": "^5.16.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@stellar/sim-z2m": "workspace:*",
     "@stellar/test-utils": "workspace:*",
-    "@types/node": "^26.1.2",
-    "typescript": "^5.7.3",
-    "vitest": "^3.0.0"
+    "@types/node": "^26.6.3",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2"
   }
 }
